@@ -95,6 +95,69 @@
                 </div>`;
         }
 
+        window.renderPaywall = (type) => {
+            const container = document.getElementById('app-container');
+            
+            // Textos dinámicos dependiendo de si es empresa o candidato
+            const isEmpresa = type === 'empresa';
+            const tituloPro = isEmpresa ? 'Reclutador Premium' : 'Candidato PRO';
+            const precio = isEmpresa ? '$19.99' : '$4.99';
+            const beneficio1 = isEmpresa ? 'Búsqueda global de talento' : 'Mira qué empresas ven tu CV';
+            const beneficio2 = isEmpresa ? 'Guarda CVs en favoritos' : 'Destaca en los resultados de búsqueda';
+
+            container.innerHTML = `
+                <div class="max-w-4xl mx-auto py-10 animate-fade-in text-center">
+                    <button onclick="location.reload()" class="mb-6 text-slate-400 hover:text-indigo-600 flex items-center gap-2 mx-auto"><i class="fas fa-arrow-left"></i> Volver a mi panel</button>
+                    
+                    <h2 class="text-4xl font-black mb-4 text-slate-800 tracking-tight">Lleva tu cuenta al <span class="text-indigo-600">Siguiente Nivel</span></h2>
+                    <p class="text-slate-500 mb-12 text-lg">Desbloquea herramientas exclusivas para potenciar tus resultados.</p>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-3xl mx-auto">
+                        <div class="bg-white p-8 rounded-3xl border-2 border-slate-100 opacity-80">
+                            <h3 class="font-black text-slate-500 text-xl mb-2">Plan Básico</h3>
+                            <p class="text-4xl font-black text-slate-800 mb-6">Gratis</p>
+                            <ul class="text-sm text-slate-500 space-y-3 mb-8 text-left">
+                                <li><i class="fas fa-check text-green-500 mr-2"></i> Perfil digital estándar</li>
+                                <li><i class="fas fa-check text-green-500 mr-2"></i> Generación de código QR</li>
+                                <li><i class="fas fa-times text-red-300 mr-2"></i> Soporte estándar</li>
+                            </ul>
+                            <button class="w-full bg-slate-200 text-slate-500 py-3 rounded-2xl font-bold cursor-not-allowed">Tu plan actual</button>
+                        </div>
+
+                        <div class="bg-indigo-900 p-8 rounded-3xl border-4 border-indigo-400 shadow-2xl transform hover:-translate-y-2 transition-transform relative">
+                            <div class="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-amber-400 text-amber-900 text-[10px] font-black px-4 py-1 rounded-full uppercase tracking-widest">Recomendado</div>
+                            <h3 class="font-black text-indigo-300 text-xl mb-2">${tituloPro}</h3>
+                            <p class="text-4xl font-black text-white mb-6">${precio}<span class="text-sm text-indigo-400 font-normal">/mes</span></p>
+                            <ul class="text-sm text-indigo-100 space-y-3 mb-8 text-left">
+                                <li><i class="fas fa-star text-amber-400 mr-2"></i> <b>${beneficio1}</b></li>
+                                <li><i class="fas fa-star text-amber-400 mr-2"></i> ${beneficio2}</li>
+                                <li><i class="fas fa-star text-amber-400 mr-2"></i> Soporte prioritario con Admin</li>
+                            </ul>
+                            <button onclick="simularPago()" class="w-full bg-amber-400 text-amber-900 py-3 rounded-2xl font-black shadow-lg hover:bg-amber-300 transition-colors uppercase tracking-widest">
+                                Adquirir Plan
+                            </button>
+                        </div>
+                    </div>
+                </div>`;
+        };
+
+        // Función temporal para simular que pagaron (aquí luego conectarás Stripe o PayPal)
+        window.simularPago = async () => {
+            if(!currentUser) return alert("Debes iniciar sesión primero.");
+            
+            const btn = event.target;
+            btn.innerText = "Procesando...";
+            
+            // Actualizamos la base de datos
+            await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'usuarios_sistema', currentUser.id), {
+                plan: 'pro'
+            });
+            
+            alert("¡Pago exitoso simulado! Ahora eres usuario PRO.");
+            currentUser.plan = 'pro'; // Actualizamos la sesión actual
+            location.reload(); // Recargamos para aplicar cambios
+        };
+
         window.renderAuthOption = (type) => {
             const container = document.getElementById('app-container');
             container.innerHTML = `
@@ -164,6 +227,7 @@
                     email: document.getElementById('reg-email').value,
                     password: document.getElementById('reg-pass').value,
                     tipo: type,
+                    plan: 'gratis', // <-- AÑADIMOS ESTO
                     timestamp: serverTimestamp()
                 });
                 alert("Cuenta creada con éxito.");
@@ -173,34 +237,263 @@
 
         async function renderEmpresaDashboard(user) {
             const container = document.getElementById('app-container');
-            container.innerHTML = `
-                <div class="max-w-5xl mx-auto py-8 animate-fade-in">
-                    <div class="bg-white p-8 rounded-3xl border mb-8 flex justify-between items-center">
-                        <div>
-                            <h2 class="text-3xl font-black">Portal de Reclutamiento</h2>
-                            <p class="text-slate-500">Bienvenido, ${user.nombre}. Explora el talento disponible.</p>
+            const isPremium = user.plan === 'pro' || user.tipo === 'admin';
+
+            // 1. SI ES GRATIS: Le mostramos el muro bloqueado
+            if (!isPremium) {
+                container.innerHTML = `
+                    <div class="max-w-5xl mx-auto py-12 animate-fade-in text-center">
+                        <div class="bg-white p-12 rounded-3xl border mb-8 shadow-sm">
+                            <div class="w-20 h-20 bg-amber-50 text-amber-500 rounded-full flex items-center justify-center mx-auto mb-6">
+                                <i class="fas fa-lock text-3xl"></i>
+                            </div>
+                            <h2 class="text-3xl font-black mb-4 text-slate-800">Buscador Global Bloqueado</h2>
+                            <p class="text-slate-500 mb-8 max-w-lg mx-auto text-lg">
+                                Tu cuenta actual <b>(Gratis)</b> solo te permite ver los currículums cuando escaneas directamente el código QR de un candidato.
+                            </p>
+                            <button onclick="renderPaywall('empresa')" class="bg-amber-400 text-amber-900 px-8 py-4 rounded-2xl font-black shadow-lg hover:bg-amber-300 transition-colors uppercase tracking-widest inline-flex items-center gap-2">
+                                <i class="fas fa-crown"></i> Desbloquear Premium por $19.99/mes
+                            </button>
                         </div>
-                        ${currentUser?.tipo === 'admin' ? `<button onclick="renderAdminPanel()" class="text-sm bg-slate-900 text-white px-4 py-2 rounded-xl">Volver al Panel Admin</button>` : ''}
+                    </div>`;
+                return;
+            }
+
+            // 2. SI ES PREMIUM: Le mostramos el buscador y los favoritos
+            container.innerHTML = `
+                <div class="max-w-6xl mx-auto py-8 animate-fade-in">
+                    <div class="bg-white p-8 rounded-3xl border mb-8 flex flex-col md:flex-row justify-between items-center gap-6 shadow-sm">
+                        <div>
+                            <h2 class="text-3xl font-black flex items-center gap-3 text-slate-800">
+                                <i class="fas fa-crown text-amber-400"></i> Portal Premium
+                            </h2>
+                            <p class="text-slate-500 mt-1">Bienvenido, ${user.nombre}. Busca y guarda el mejor talento.</p>
+                        </div>
+                        <div class="w-full md:w-1/2 relative">
+                            <i class="fas fa-search absolute left-4 top-4 text-slate-400"></i>
+                            <input type="text" id="buscador-talento" placeholder="Buscar por profesión, nombre o habilidad..." 
+                                class="w-full pl-11 p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all" 
+                                oninput="filtrarTalento(this.value)">
+                        </div>
                     </div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="cv-grid"></div>
+
+                    <div class="mb-6 flex gap-3 border-b pb-4">
+                        <button onclick="mostrarTodos()" class="text-sm font-bold text-indigo-600 bg-indigo-50 px-5 py-2.5 rounded-xl hover:bg-indigo-100 transition-colors">Todos los Candidatos</button>
+                        <button onclick="mostrarFavoritos()" class="text-sm font-bold text-pink-600 bg-pink-50 px-5 py-2.5 rounded-xl hover:bg-pink-100 transition-colors flex items-center gap-2">
+                            <i class="fas fa-heart"></i> Mis Favoritos
+                        </button>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6" id="cv-grid">
+                        <div class="col-span-full text-center py-10 text-slate-400"><i class="fas fa-spinner fa-spin text-3xl mb-3"></i><p>Cargando talentos...</p></div>
+                    </div>
                 </div>`;
-            
+
+            // Cargamos todos los CVs a la memoria para filtrarlos rápido
+            window.allCVs = [];
             const cvsSnap = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'cvs'));
+            cvsSnap.forEach(d => { window.allCVs.push({ id: d.id, ...d.data() }); });
+
+            // Nos aseguramos de que la empresa tenga un array de favoritos
+            if (!currentUser.favoritos) currentUser.favoritos = [];
+
+            dibujarGridCVs(window.allCVs);
+        }
+
+        // --- FUNCIONES AUXILIARES PARA EL BUSCADOR Y FAVORITOS ---
+        window.dibujarGridCVs = (cvList) => {
             const grid = document.getElementById('cv-grid');
             grid.innerHTML = '';
-            cvsSnap.forEach(d => {
-                const cv = d.data();
+            
+            if (cvList.length === 0) {
+                grid.innerHTML = '<p class="text-slate-400 col-span-full text-center py-10 bg-slate-50 rounded-2xl border border-dashed">No se encontraron candidatos con esos criterios.</p>';
+                return;
+            }
+
+            cvList.forEach(cv => {
+                const esFavorito = currentUser.favoritos && currentUser.favoritos.includes(cv.id);
+                const corazon = esFavorito ? 'fas text-pink-500' : 'far text-slate-300 hover:text-pink-400';
+
                 grid.innerHTML += `
-                    <div class="bg-white p-6 rounded-3xl border hover:shadow-xl transition-all">
-                        <div class="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center mb-4 overflow-hidden">
-                            ${cv.foto ? `<img src="${cv.foto}" class="w-full h-full object-cover">` : `<i class="fas fa-id-card text-xl"></i>`}
+                    <div class="bg-white p-6 rounded-3xl border hover:shadow-xl transition-all relative group flex flex-col h-full">
+                        <button onclick="toggleFavorito('${cv.id}')" class="absolute top-4 right-4 text-xl z-10 p-2 bg-white/80 rounded-full backdrop-blur-sm shadow-sm transition-transform hover:scale-110">
+                            <i class="fa-heart ${corazon}" id="fav-icon-${cv.id}"></i>
+                        </button>
+                        
+                        <div class="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mb-4 overflow-hidden border-2 border-transparent group-hover:border-indigo-100 transition-colors flex-shrink-0">
+                            ${cv.foto ? `<img src="${cv.foto}" class="w-full h-full object-cover">` : `<i class="fas fa-user-tie text-2xl"></i>`}
                         </div>
-                        <h3 class="font-bold text-lg">${cv.nombre}</h3>
-                        <p class="text-indigo-600 text-sm font-semibold">${cv.profesion || 'Candidato'}</p>
-                        <button onclick="loadCV('${d.id}')" class="mt-6 w-full py-2 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-indigo-600 transition-colors">VER PERFIL COMPLETO</button>
+                        
+                        <div class="flex-1">
+                            <h3 class="font-bold text-lg text-slate-800 leading-tight">${cv.nombre}</h3>
+                            <p class="text-indigo-600 text-xs font-black mb-2 uppercase tracking-wide mt-1">${cv.profesion || 'Candidato'}</p>
+                            <p class="text-[11px] text-slate-500 line-clamp-3 mb-4 leading-relaxed">${cv.objetivo || 'Sin descripción de perfil.'}</p>
+                        </div>
+                        
+                        <button onclick="loadCV('${cv.id}')" class="w-full py-3 bg-slate-900 text-white rounded-xl text-xs font-black hover:bg-indigo-600 transition-colors mt-auto">VER PERFIL</button>
                     </div>`;
             });
-        }
+        };
+
+        window.filtrarTalento = (queryStr) => {
+            const q = queryStr.toLowerCase();
+            const filtrados = window.allCVs.filter(cv => 
+                (cv.nombre && cv.nombre.toLowerCase().includes(q)) || 
+                (cv.profesion && cv.profesion.toLowerCase().includes(q)) ||
+                (cv.objetivo && cv.objetivo.toLowerCase().includes(q)) // También busca palabras clave en su perfil
+            );
+            dibujarGridCVs(filtrados);
+        };
+
+        window.mostrarTodos = () => {
+            document.getElementById('buscador-talento').value = '';
+            dibujarGridCVs(window.allCVs);
+        };
+
+        window.mostrarFavoritos = () => {
+            document.getElementById('buscador-talento').value = '';
+            const favs = window.allCVs.filter(cv => currentUser.favoritos && currentUser.favoritos.includes(cv.id));
+            dibujarGridCVs(favs);
+        };
+
+        window.toggleFavorito = async (cvId) => {
+            if(!currentUser.favoritos) currentUser.favoritos = [];
+            const index = currentUser.favoritos.indexOf(cvId);
+            
+            if(index > -1) {
+                currentUser.favoritos.splice(index, 1); // Quitar
+                document.getElementById('fav-icon-'+cvId).className = 'fa-heart far text-slate-300 hover:text-pink-400';
+            } else {
+                currentUser.favoritos.push(cvId); // Añadir
+                document.getElementById('fav-icon-'+cvId).className = 'fa-heart fas text-pink-500';
+            }
+
+            // Guardar en Firebase
+            try {
+                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'usuarios_sistema', currentUser.id), {
+                    favoritos: currentUser.favoritos
+                });
+            } catch(e) { console.error("Error guardando favorito:", e); }
+        };
+
+        // --- PANTALLA DE PAGOS / PAYWALL ---
+        window.renderPaywall = (type) => {
+            const container = document.getElementById('app-container');
+            const isEmpresa = type === 'empresa';
+            
+            const tituloPro = isEmpresa ? 'Reclutador Premium' : 'Candidato PRO';
+            const precio = isEmpresa ? '$19.99' : '$4.99';
+            const beneficio1 = isEmpresa ? 'Búsqueda global en la base de talentos' : 'Descubre qué empresas escanean tu QR';
+            const beneficio2 = isEmpresa ? 'Guarda candidatos en Favoritos' : 'Destaca tu perfil en las búsquedas';
+            const botonVolver = isEmpresa ? "renderEmpresaDashboard(currentUser)" : "renderDashboard(currentUser)";
+
+            container.innerHTML = `
+                <div class="max-w-4xl mx-auto py-12 animate-fade-in text-center">
+                    <button onclick="${botonVolver}" class="mb-8 text-slate-400 hover:text-indigo-600 flex items-center gap-2 mx-auto transition-colors"><i class="fas fa-arrow-left"></i> Volver a mi panel</button>
+                    
+                    <h2 class="text-4xl font-black mb-4 text-slate-800 tracking-tight">Lleva tu cuenta al <span class="text-indigo-600">Siguiente Nivel</span></h2>
+                    <p class="text-slate-500 mb-12 text-lg">Desbloquea herramientas exclusivas para potenciar tus resultados en LORHELS CV.</p>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto text-left">
+                        <div class="bg-white p-8 rounded-3xl border-2 border-slate-100 opacity-70 flex flex-col">
+                            <h3 class="font-black text-slate-500 text-xl mb-1">Plan Básico</h3>
+                            <p class="text-4xl font-black text-slate-800 mb-8">Gratis</p>
+                            <ul class="text-sm text-slate-500 space-y-4 mb-8 flex-1">
+                                <li class="flex items-start gap-3"><i class="fas fa-check text-green-500 mt-1"></i> Funciones básicas habilitadas</li>
+                                <li class="flex items-start gap-3"><i class="fas fa-times text-red-300 mt-1"></i> Sin acceso a métricas avanzadas</li>
+                                <li class="flex items-start gap-3"><i class="fas fa-times text-red-300 mt-1"></i> Sin buscador global</li>
+                            </ul>
+                            <button class="w-full bg-slate-100 text-slate-400 py-4 rounded-2xl font-bold cursor-not-allowed mt-auto">Tu plan actual</button>
+                        </div>
+
+                        <div class="bg-indigo-900 p-8 rounded-3xl border-4 border-indigo-400 shadow-2xl relative flex flex-col">
+                            <div class="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-amber-400 text-amber-900 text-[10px] font-black px-4 py-1.5 rounded-full uppercase tracking-widest shadow-md">Recomendado</div>
+                            <h3 class="font-black text-indigo-300 text-xl mb-1">${tituloPro}</h3>
+                            <p class="text-4xl font-black text-white mb-6">${precio}<span class="text-sm text-indigo-400 font-normal"> / mes</span></p>
+                            
+                            <ul class="text-sm text-indigo-100 space-y-4 mb-6">
+                                <li class="flex items-start gap-3"><i class="fas fa-star text-amber-400 mt-1"></i> <b>${beneficio1}</b></li>
+                                <li class="flex items-start gap-3"><i class="fas fa-star text-amber-400 mt-1"></i> ${beneficio2}</li>
+                            </ul>
+
+                            <div class="mt-auto bg-indigo-950 p-5 rounded-2xl border border-indigo-700">
+                                <p class="text-xs text-indigo-300 font-bold mb-3 uppercase tracking-wider">Instrucciones de Activación:</p>
+                                <ol class="text-xs text-indigo-100 space-y-3 mb-5 ml-4 list-decimal">
+                                    <li>Realiza el pago correspondiente.</li>
+                                    <li>Envía el comprobante por WhatsApp al <br><b><i class="fab fa-whatsapp text-green-400 mr-1 mt-1"></i> +1 829-913-5723</b></li>
+                                    <li>Haz clic en el botón de abajo para notificar al administrador.</li>
+                                </ol>
+                                
+                                <button onclick="solicitarUpgrade()" class="w-full bg-amber-400 text-amber-900 py-4 rounded-xl font-black shadow-[0_0_15px_rgba(251,191,36,0.3)] hover:bg-amber-300 transition-colors uppercase tracking-widest text-sm">
+                                    <i class="fas fa-check-circle mr-1"></i> Ya envié el comprobante
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+        };
+
+        // --- FUNCIÓN PARA REGISTRAR LA SOLICITUD DE UPGRADE ---
+        // --- FUNCIÓN PARA REGISTRAR LA SOLICITUD DE UPGRADE Y ABRIR WHATSAPP ---
+        window.solicitarUpgrade = async () => {
+            if(!currentUser) return alert("Debes iniciar sesión primero.");
+            const btn = event.target.closest('button');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Procesando...';
+            btn.classList.add("opacity-50", "cursor-wait");
+            
+            try {
+                // 1. Verificamos si ya tiene una solicitud pendiente
+                const reqRef = collection(db, 'artifacts', appId, 'public', 'data', 'solicitudes_plan');
+                const qSnap = await getDocs(reqRef);
+                let yaTienePendiente = false;
+                
+                qSnap.forEach(doc => {
+                    const data = doc.data();
+                    if (data.usuario_id === currentUser.id && data.estado === 'pendiente') {
+                        yaTienePendiente = true;
+                    }
+                });
+
+                // Mensaje predeterminado para WhatsApp
+                const mensajeWa = encodeURIComponent(`Hola, soy ${currentUser.nombre} (${currentUser.email}). Acabo de solicitar el plan PRO en LORHELS CV y adjunto mi comprobante de pago:`);
+                const linkWhatsApp = `https://wa.me/18299135723?text=${mensajeWa}`;
+
+                // 2. Si ya tiene solicitud, no duplicamos, solo abrimos WhatsApp
+                if (yaTienePendiente) {
+                    alert("Ya tienes una solicitud de aprobación en proceso. \n\nAbriremos WhatsApp por si olvidaste enviar la foto de tu comprobante.");
+                    window.open(linkWhatsApp, '_blank');
+                    btn.innerHTML = originalText;
+                    btn.classList.remove("opacity-50", "cursor-wait");
+                    return;
+                }
+
+                // 3. Si no tiene, creamos la solicitud nueva
+                await addDoc(reqRef, {
+                    usuario_id: currentUser.id,
+                    nombre: currentUser.nombre,
+                    email: currentUser.email,
+                    tipo_usuario: currentUser.tipo, // Para saber si es candidato o empresa
+                    estado: 'pendiente',
+                    fecha: new Date().toLocaleDateString(),
+                    timestamp: serverTimestamp()
+                });
+                
+                alert("¡Solicitud registrada con éxito! \n\nA continuación se abrirá WhatsApp para que envíes la foto del comprobante. Lo verificaremos en breve.");
+                
+                // Abrir WhatsApp en otra pestaña
+                window.open(linkWhatsApp, '_blank');
+                
+                // Redirigimos a su panel
+                if (currentUser.tipo === 'empresa') renderEmpresaDashboard(currentUser);
+                else renderDashboard(currentUser);
+                
+            } catch(e) {
+                alert("Hubo un error al procesar tu solicitud: " + e.message);
+                btn.innerHTML = originalText;
+                btn.classList.remove("opacity-50", "cursor-wait");
+            }
+        };
 
         async function renderDashboard(targetUser, isAdminEditing = false) {
             const cvsSnap = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'cvs'));
@@ -429,63 +722,148 @@
             } catch(e) { alert("Error al enviar la solicitud: " + e.message); }
         };
 
-        // --- PANEL DE ADMIN ACTUALIZADO ---
+        // --- PANEL DE ADMIN ACTUALIZADO (Con Buscador) ---
         window.renderAdminPanel = async () => {
             const container = document.getElementById('app-container');
             container.innerHTML = `
-                <div class="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-10 animate-fade-in">
+                <div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8 animate-fade-in py-8">
                     
-                    <div class="bg-white p-8 rounded-3xl border shadow-sm">
-                        <h2 class="text-xl font-black mb-6 text-slate-800 border-b pb-4"><i class="fas fa-users text-indigo-600 mr-2"></i> Base de Candidatos</h2>
-                        <div id="admin-list" class="space-y-3"></div>
+                    <div class="bg-white p-6 rounded-3xl border shadow-sm h-fit">
+                        <h2 class="text-lg font-black mb-4 text-slate-800 border-b pb-4"><i class="fas fa-users text-indigo-600 mr-2"></i> Usuarios</h2>
+                        
+                        <div class="relative mb-4">
+                            <i class="fas fa-search absolute left-3 top-3 text-slate-400 text-xs"></i>
+                            <input type="text" id="buscador-admin" placeholder="Buscar por nombre o correo..." 
+                                class="w-full pl-8 p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-indigo-500 outline-none transition-all" 
+                                oninput="filtrarAdmin(this.value)">
+                        </div>
+
+                        <div id="admin-list" class="space-y-3 max-h-[500px] overflow-y-auto pr-2">
+                            <p class="text-center text-slate-400 py-4 text-xs"><i class="fas fa-spinner fa-spin"></i> Cargando...</p>
+                        </div>
                     </div>
 
-                    <div class="bg-slate-50 p-8 rounded-3xl border shadow-sm h-fit">
-                        <h2 class="text-xl font-black mb-6 text-slate-800 border-b pb-4 border-slate-200"><i class="fas fa-bell text-amber-500 mr-2"></i> Solicitudes Pendientes</h2>
-                        <div id="solicitudes-list" class="space-y-4"></div>
+                    <div class="bg-slate-50 p-6 rounded-3xl border shadow-sm h-fit">
+                        <h2 class="text-lg font-black mb-6 text-slate-800 border-b pb-4 border-slate-200"><i class="fas fa-bell text-amber-500 mr-2"></i> Ediciones de CV</h2>
+                        <div id="solicitudes-list" class="space-y-4 max-h-[500px] overflow-y-auto pr-2"></div>
                     </div>
-                    
+
+                    <div class="bg-indigo-50 p-6 rounded-3xl border border-indigo-100 shadow-sm h-fit">
+                        <h2 class="text-lg font-black mb-6 text-indigo-900 border-b pb-4 border-indigo-200"><i class="fas fa-gem text-indigo-500 mr-2"></i> Pagos PRO</h2>
+                        <div id="pagos-list" class="space-y-4 max-h-[500px] overflow-y-auto pr-2"></div>
+                    </div>
                 </div>`;
 
-            // Cargar Usuarios
+            // 1. Cargar Usuarios y guardarlos en memoria para el buscador
+            window.allAdminUsers = [];
             const users = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'usuarios_sistema'));
-            const list = document.getElementById('admin-list');
             users.forEach(d => {
                 const u = d.data();
-                if(u.tipo === 'admin') return;
-                list.innerHTML += `
-                    <div class="bg-slate-50 p-4 rounded-2xl border flex justify-between items-center hover:shadow-md transition-shadow">
-                        <div>
-                            <p class="font-bold text-sm text-slate-800">${u.nombre}</p>
-                            <p class="text-[10px] text-slate-500 uppercase">${u.email} <span class="text-indigo-600 font-bold ml-1">[${u.tipo}]</span></p>
-                        </div>
-                        <button onclick="adminProxy('${u.nombre}', '${u.email}', '${u.tipo}')" class="bg-indigo-600 text-white px-4 py-2 rounded-xl text-[10px] font-bold hover:bg-indigo-700">Editar Perfil</button>
-                    </div>`;
+                if(u.tipo !== 'admin') window.allAdminUsers.push({ id: d.id, ...u });
             });
+            dibujarListaAdmin(window.allAdminUsers); // Pintamos la lista inicial
 
-            // Cargar Solicitudes
+            // 2. Cargar Solicitudes de Edición de CV
             const solicitudes = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'solicitudes'));
             const solList = document.getElementById('solicitudes-list');
             let hasSolicitudes = false;
-            
+            solList.innerHTML = ''; // Limpiamos "Cargando"
             solicitudes.forEach(d => {
                 const s = d.data();
                 if(s.estado === 'pendiente') {
                     hasSolicitudes = true;
                     solList.innerHTML += `
-                        <div class="bg-white p-5 rounded-2xl border border-amber-200 shadow-sm relative" id="sol-${d.id}">
-                            <div class="absolute top-4 right-4 flex gap-2">
-                                <button onclick="marcarSolicitudLista('${d.id}')" class="bg-green-100 text-green-700 hover:bg-green-500 hover:text-white w-8 h-8 rounded-xl flex items-center justify-center text-sm transition-colors" title="Marcar como Completada"><i class="fas fa-check"></i></button>
-                                <button onclick="adminProxy('${s.nombre}', '${s.email}', 'usuario')" class="bg-indigo-100 text-indigo-700 hover:bg-indigo-600 hover:text-white w-8 h-8 rounded-xl flex items-center justify-center text-sm transition-colors" title="Ir a editar el perfil de ${s.nombre}"><i class="fas fa-edit"></i></button>
+                        <div class="bg-white p-4 rounded-2xl border border-amber-200 shadow-sm relative" id="sol-${d.id}">
+                            <div class="flex gap-2 mb-2">
+                                <button onclick="marcarSolicitudLista('${d.id}')" class="bg-green-100 text-green-700 hover:bg-green-500 hover:text-white px-2 py-1 rounded-lg text-[10px] font-bold"><i class="fas fa-check mr-1"></i> Listo</button>
+                                <button onclick="adminProxy('${s.nombre}', '${s.email}', 'usuario')" class="bg-indigo-100 text-indigo-700 hover:bg-indigo-600 hover:text-white px-2 py-1 rounded-lg text-[10px] font-bold"><i class="fas fa-edit mr-1"></i> Editar</button>
                             </div>
-                            <p class="text-sm font-bold text-amber-900 mb-1">${s.nombre}</p>
-                            <p class="text-[10px] text-slate-400 mb-3">${s.email} • ${s.fecha}</p>
-                            <div class="bg-amber-50 p-3 rounded-xl border border-amber-100 mb-3 text-xs text-amber-900 whitespace-pre-wrap">${s.texto}</div>
-                            ${s.link ? `<a href="${s.link}" target="_blank" class="inline-flex items-center gap-2 text-[10px] bg-amber-100 text-amber-800 px-3 py-1.5 rounded-lg font-bold hover:bg-amber-200"><i class="fas fa-link"></i> Ver enlace adjunto</a>` : ''}
+                            <p class="text-xs font-bold text-amber-900 mb-1">${s.nombre}</p>
+                            <div class="bg-amber-50 p-2 rounded-lg border border-amber-100 mb-2 text-[10px] text-amber-900 whitespace-pre-wrap">${s.texto}</div>
                         </div>`;
                 }
             });
-            if(!hasSolicitudes) solList.innerHTML = '<div class="text-center py-10 text-slate-400"><i class="fas fa-inbox text-4xl mb-3 opacity-50"></i><p class="text-sm">Todo al día. No hay solicitudes nuevas.</p></div>';
+            if(!hasSolicitudes) solList.innerHTML = '<p class="text-xs text-slate-400 text-center py-5">No hay solicitudes.</p>';
+
+            // 3. Cargar Solicitudes de PAGOS PRO
+            const pagosReq = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'solicitudes_plan'));
+            const pagosList = document.getElementById('pagos-list');
+            let hasPagos = false;
+            pagosList.innerHTML = '';
+            pagosReq.forEach(d => {
+                const p = d.data();
+                if(p.estado === 'pendiente') {
+                    hasPagos = true;
+                    pagosList.innerHTML += `
+                        <div class="bg-white p-4 rounded-2xl border-2 border-indigo-200 shadow-sm relative" id="pago-${d.id}">
+                            <span class="absolute top-3 right-3 bg-indigo-100 text-indigo-700 text-[9px] font-black px-2 py-1 rounded uppercase">${p.tipo_usuario}</span>
+                            <p class="text-sm font-black text-indigo-900 mb-1">${p.nombre}</p>
+                            <p class="text-[10px] text-slate-500 mb-4">${p.email} • ${p.fecha}</p>
+                            
+                            <button onclick="aprobarPlanPRO('${d.id}', '${p.usuario_id}')" class="w-full bg-emerald-500 text-white hover:bg-emerald-600 px-3 py-2 rounded-xl flex items-center justify-center gap-2 text-xs font-bold transition-colors shadow-md">
+                                <i class="fas fa-check-double"></i> Aprobar Cuenta PRO
+                            </button>
+                        </div>`;
+                }
+            });
+            if(!hasPagos) pagosList.innerHTML = '<p class="text-xs text-indigo-300 text-center py-5"><i class="fas fa-check-circle mb-2 text-2xl"></i><br>Todo al día. Sin pagos pendientes.</p>';
+        };
+
+        // --- FUNCIONES AUXILIARES PARA EL BUSCADOR DE ADMIN ---
+        window.dibujarListaAdmin = (lista) => {
+            const listContainer = document.getElementById('admin-list');
+            listContainer.innerHTML = '';
+            
+            if(lista.length === 0) {
+                listContainer.innerHTML = '<p class="text-xs text-slate-400 text-center py-4">No se encontraron usuarios.</p>';
+                return;
+            }
+            
+            lista.forEach(u => {
+                listContainer.innerHTML += `
+                    <div class="bg-slate-50 p-4 rounded-2xl border flex flex-col gap-2 hover:shadow-md transition-shadow">
+                        <div>
+                            <p class="font-bold text-sm text-slate-800">${u.nombre}</p>
+                            <p class="text-[10px] text-slate-500 uppercase">${u.email} <span class="text-indigo-600 font-bold ml-1">[${u.tipo}]</span> <span class="text-amber-500 font-black ml-1">[${u.plan || 'GRATIS'}]</span></p>
+                        </div>
+                        <button onclick="adminProxy('${u.nombre}', '${u.email}', '${u.tipo}')" class="bg-indigo-600 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold hover:bg-indigo-700 w-full">Editar Perfil</button>
+                    </div>`;
+            });
+        };
+
+        window.filtrarAdmin = (query) => {
+            const q = query.toLowerCase();
+            const filtrados = window.allAdminUsers.filter(u => 
+                (u.nombre && u.nombre.toLowerCase().includes(q)) || 
+                (u.email && u.email.toLowerCase().includes(q))
+            );
+            dibujarListaAdmin(filtrados);
+        };
+
+        // Asegúrate de conservar aquí abajo la función `window.aprobarPlanPRO` que agregamos en el paso anterior.
+
+        // --- FUNCIÓN PARA APROBAR EL PAGO ---
+        window.aprobarPlanPRO = async (reqId, userId) => {
+            if(confirm("¿Confirmas que recibiste el pago de este usuario por WhatsApp y deseas activarle el plan PRO?")) {
+                try {
+                    // 1. Le cambiamos el plan al usuario en su perfil
+                    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'usuarios_sistema', userId), {
+                        plan: 'pro'
+                    });
+                    
+                    // 2. Marcamos la solicitud de pago como completada
+                    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'solicitudes_plan', reqId), {
+                        estado: 'aprobado'
+                    });
+                    
+                    // 3. Lo quitamos de la vista del Admin
+                    document.getElementById('pago-'+reqId).remove();
+                    alert("¡Cuenta activada! El usuario ya es PRO.");
+                    
+                } catch(e) {
+                    alert("Error al aprobar: " + e.message);
+                }
+            }
         };
 
         // --- FUNCIÓN PARA MARCAR SOLICITUD COMPLETADA ---
@@ -672,7 +1050,11 @@
         };
 
         window.showVisitas = async (cvId) => {
-            // Buscamos todas las visitas correspondientes a este CV
+            // BLOQUEO DE MONETIZACIÓN: Si el usuario es gratis, le mostramos los planes
+            if (currentUser && currentUser.tipo === 'usuario' && (!currentUser.plan || currentUser.plan === 'gratis')) {
+                renderPaywall('usuario');
+                return; // Detenemos la función para que no vea la lista
+            }
             const visitasSnap = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'visitas'));
             let misVisitas = [];
             visitasSnap.forEach(d => {
