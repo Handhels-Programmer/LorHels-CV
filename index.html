@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lorhels CV - Sistema Profesional</title>
+    <title>Lorhels CV</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -23,7 +23,7 @@
     <nav class="bg-indigo-900 text-white p-4 shadow-xl no-print">
         <div class="container mx-auto flex justify-between items-center">
             <h1 class="text-xl font-black tracking-tighter cursor-pointer" onclick="window.location.reload()">
-                LORHELS<span class="text-indigo-400">CV</span>
+                LORHELS<span class="text-indigo-400">-CV</span>
             </h1>
             <div id="auth-status" class="flex items-center gap-4">
                 <div id="role-display" class="text-[10px] font-bold bg-indigo-800 px-3 py-1 rounded-full border border-indigo-700 uppercase">Cargando...</div>
@@ -207,6 +207,15 @@
             let cv = null;
             cvsSnap.forEach(d => { if (d.data().email === targetUser.email) cv = {id: d.id, ...d.data()}; });
 
+            // NUEVO: Contamos cuántas visitas tiene este CV
+            let totalVisitas = 0;
+            if (cv) {
+                const visitasSnap = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'visitas'));
+                visitasSnap.forEach(d => {
+                    if (d.data().cv_id === cv.id) totalVisitas++;
+                });
+            }
+
             const isFullAccess = isAdminEditing || (currentUser && currentUser.tipo === 'admin');
 
             const container = document.getElementById('app-container');
@@ -220,6 +229,10 @@
                         <div class="flex gap-4 flex-wrap">
                             ${isFullAccess ? `<button onclick="renderAdminPanel()" class="bg-slate-200 text-slate-800 px-6 py-3 rounded-2xl font-bold border">Volver a Consola</button>` : ''}
                             ${cv ? `
+                                <button onclick="showVisitas('${cv.id}')" class="bg-amber-50 text-amber-600 px-6 py-3 rounded-2xl font-bold border border-amber-200 hover:bg-amber-100 flex items-center gap-2 transition-colors shadow-sm">
+                                    <i class="fas fa-chart-line"></i> ${totalVisitas} VISTAS
+                                </button>
+                                
                                 <button onclick="showQR('${cv.id}')" class="bg-slate-900 text-white px-6 py-3 rounded-2xl font-bold flex items-center gap-2"><i class="fas fa-qrcode"></i> MI QR</button>
                                 <button onclick="loadCV('${cv.id}')" class="bg-indigo-50 text-indigo-600 px-6 py-3 rounded-2xl font-bold border border-indigo-100 flex items-center gap-2"><i class="fas fa-eye"></i> VISTA PREVIA</button>
                             ` : ''}
@@ -656,6 +669,54 @@
                 </div>`;
             document.body.appendChild(modal);
             new QRCode(document.getElementById("qr-box"), { text: url, width: 220, height: 220 });
+        };
+
+        window.showVisitas = async (cvId) => {
+            // Buscamos todas las visitas correspondientes a este CV
+            const visitasSnap = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'visitas'));
+            let misVisitas = [];
+            visitasSnap.forEach(d => {
+                const v = d.data();
+                if (v.cv_id === cvId) misVisitas.push(v);
+            });
+
+            // Las invertimos para que las más recientes salgan arriba
+            misVisitas.reverse();
+
+            const modal = document.createElement('div');
+            modal.className = "fixed inset-0 bg-slate-900/90 flex items-center justify-center z-[100] p-4 backdrop-blur-sm animate-fade-in";
+            
+            // Generamos la lista de empresas HTML
+            let listHTML = '';
+            if (misVisitas.length === 0) {
+                listHTML = '<p class="text-slate-500 py-10 text-center">Aún no hay visitas registradas.</p>';
+            } else {
+                listHTML = misVisitas.map(v => `
+                    <div class="bg-slate-50 p-4 rounded-xl border mb-3 text-left hover:border-indigo-300 transition-colors">
+                        <p class="font-bold text-slate-800"><i class="fas fa-building text-indigo-500 mr-2"></i>${v.empresa_nombre || 'Empresa Anónima'}</p>
+                        <p class="text-[11px] text-slate-500 mt-1"><i class="fas fa-envelope mr-2"></i>${v.empresa_email || 'Sin correo'}</p>
+                        <p class="text-[10px] text-slate-400 mt-2 font-semibold"><i class="fas fa-clock mr-1"></i>${v.fecha || 'Fecha desconocida'}</p>
+                    </div>
+                `).join('');
+            }
+
+            modal.innerHTML = `
+                <div class="bg-white p-8 rounded-3xl text-center shadow-2xl max-w-md w-full border relative flex flex-col max-h-[85vh]">
+                    <button onclick="this.closest('.fixed').remove()" class="absolute top-4 right-4 text-slate-400 hover:text-red-500 transition-colors"><i class="fas fa-times text-xl"></i></button>
+                    
+                    <div class="w-16 h-16 bg-amber-100 text-amber-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-chart-line text-2xl"></i>
+                    </div>
+                    
+                    <h3 class="font-black text-2xl mb-1 text-slate-800">Visualizaciones</h3>
+                    <p class="text-sm text-slate-500 mb-6">Empresas que han escaneado tu perfil.</p>
+                    
+                    <div class="overflow-y-auto pr-2 flex-1">
+                        ${listHTML}
+                    </div>
+                </div>`;
+                
+            document.body.appendChild(modal);
         };
 
         window.renderAccessForm = (cvId) => {
