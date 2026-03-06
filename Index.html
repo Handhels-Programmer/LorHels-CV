@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lorhels CV - Sistema Profesional</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        @media print {
+            .no-print { display: none !important; }
+            body { background: white; padding: 0; }
+            .cv-container { box-shadow: none; border: none; width: 100%; max-width: 100%; margin: 0; }
+        }
+        .animate-fade-in { animation: fadeIn 0.3s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900 font-sans">
+
+    <!-- Navegación -->
+    <nav class="bg-indigo-900 text-white p-4 shadow-xl no-print">
+        <div class="container mx-auto flex justify-between items-center">
+            <h1 class="text-xl font-black tracking-tighter cursor-pointer" onclick="window.location.reload()">
+                LORHELS<span class="text-indigo-400">CV</span>
+            </h1>
+            <div id="auth-status" class="flex items-center gap-4">
+                <div id="role-display" class="text-[10px] font-bold bg-indigo-800 px-3 py-1 rounded-full border border-indigo-700 uppercase">Cargando...</div>
+                <button id="logout-btn" onclick="location.reload()" class="hidden text-xs bg-red-500/20 text-red-300 hover:bg-red-500 hover:text-white px-3 py-1 rounded transition-all">Salir</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Contenedor Principal -->
+    <main id="app-container" class="container mx-auto mt-6 px-4 pb-32">
+        <div class="flex justify-center items-center h-64">
+            <div class="animate-spin rounded-full h-12 w-12 border-4 border-indigo-500 border-t-transparent"></div>
+        </div>
+    </main>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, getDocs, collection, query, addDoc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDE0BPfySfOJTOPLGdCnENlHVEyX6wJusU",
+            authDomain: "lorhels-cv.firebaseapp.com",
+            projectId: "lorhels-cv",
+            storageBucket: "lorhels-cv.firebasestorage.app",
+            messagingSenderId: "769611552220",
+            appId: "1:769611552220:web:03350cab69f08d7622eb19"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const appId = 'lorhels-cv'; 
+
+        let currentUser = null; 
+
+        async function init() {
+            try {
+                await signInAnonymously(auth);
+                onAuthStateChanged(auth, async (user) => {
+                    const params = new URLSearchParams(window.location.search);
+                    const cvId = params.get('cv');
+                    if (cvId) renderAccessForm(cvId); else renderWelcome();
+                });
+            } catch (e) { console.error(e); }
+        }
+
+        function renderWelcome() {
+            document.getElementById('role-display').innerText = "Visitante";
+            const container = document.getElementById('app-container');
+            container.innerHTML = `
+                <div class="max-w-5xl mx-auto py-16 text-center animate-fade-in">
+                    <h2 class="text-6xl font-black mb-6 text-slate-800 tracking-tight">Potencia tu <span class="text-indigo-600">Carrera</span></h2>
+                    <p class="text-slate-500 mb-12 text-xl max-w-2xl mx-auto">Crea un CV digital profesional con acceso vía QR para empresas y reclutadores.</p>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
+                        <div onclick="renderAuthOption('admin')" class="bg-white p-8 rounded-3xl border hover:shadow-2xl transition-all cursor-pointer group">
+                            <div class="w-14 h-14 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:bg-slate-800 group-hover:text-white"><i class="fas fa-lock"></i></div>
+                            <h3 class="font-black text-slate-700">ADMIN</h3>
+                        </div>
+                        <div onclick="renderAuthOption('usuario')" class="bg-white p-10 rounded-3xl border-2 border-indigo-100 shadow-xl hover:-translate-y-2 transition-all cursor-pointer group">
+                            <div class="w-16 h-16 bg-indigo-100 text-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:bg-indigo-600 group-hover:text-white"><i class="fas fa-user-tie text-2xl"></i></div>
+                            <h3 class="font-black text-indigo-900">CANDIDATO</h3>
+                        </div>
+                        <div onclick="renderAuthOption('empresa')" class="bg-white p-8 rounded-3xl border hover:shadow-2xl transition-all cursor-pointer group">
+                            <div class="w-14 h-14 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:bg-amber-600 group-hover:text-white"><i class="fas fa-building"></i></div>
+                            <h3 class="font-black text-slate-700">EMPRESA</h3>
+                        </div>
+                    </div>
+                </div>`;
+        }
+
+        window.renderAuthOption = (type) => {
+            const container = document.getElementById('app-container');
+            container.innerHTML = `
+                <div class="max-w-md mx-auto py-10 animate-fade-in">
+                    <button onclick="renderWelcome()" class="mb-6 text-slate-400 hover:text-indigo-600 flex items-center gap-2"><i class="fas fa-arrow-left"></i> Volver</button>
+                    <div class="bg-white p-8 rounded-3xl shadow-2xl border">
+                        <h2 class="text-2xl font-black mb-8 text-center uppercase tracking-widest text-slate-800">Portal ${type}</h2>
+                        <div class="space-y-4">
+                            <button onclick="renderLogin('${type}')" class="w-full bg-indigo-600 text-white py-4 rounded-2xl font-bold shadow-lg shadow-indigo-200">Iniciar Sesión</button>
+                            ${type !== 'admin' ? `<button onclick="renderRegister('${type}')" class="w-full border-2 border-slate-900 text-slate-900 py-4 rounded-2xl font-bold">Crear Cuenta Nueva</button>` : ''}
+                        </div>
+                    </div>
+                </div>`;
+        };
+
+        window.renderLogin = (type) => {
+            document.getElementById('app-container').innerHTML = `
+                <div class="max-w-md mx-auto py-10 animate-fade-in">
+                    <div class="bg-white p-8 rounded-3xl shadow-2xl border">
+                        <h2 class="text-xl font-bold mb-6 text-center">LOGIN ${type.toUpperCase()}</h2>
+                        <form id="login-form" class="space-y-4">
+                            <input type="email" id="log-email" placeholder="Correo Electrónico" required class="w-full p-4 bg-slate-50 border rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500">
+                            <input type="password" id="log-pass" placeholder="Contraseña" required class="w-full p-4 bg-slate-50 border rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500">
+                            <button type="submit" class="w-full bg-indigo-600 text-white py-4 rounded-2xl font-bold">ENTRAR</button>
+                        </form>
+                    </div>
+                </div>`;
+            
+            document.getElementById('login-form').onsubmit = async (e) => {
+                e.preventDefault();
+                const usersRef = collection(db, 'artifacts', appId, 'public', 'data', 'usuarios_sistema');
+                const qSnap = await getDocs(usersRef);
+                let found = null;
+                qSnap.forEach(doc => {
+                    const u = doc.data();
+                    if (u.email === document.getElementById('log-email').value && u.password === document.getElementById('log-pass').value && u.tipo === type) found = {id: doc.id, ...u};
+                });
+
+                if (found) {
+                    currentUser = found; 
+                    document.getElementById('role-display').innerText = type.toUpperCase();
+                    document.getElementById('logout-btn').classList.remove('hidden');
+                    if (type === 'admin') renderAdminPanel(); 
+                    else if (type === 'empresa') renderEmpresaDashboard(currentUser);
+                    else renderDashboard(found, false); 
+                } else alert("Datos incorrectos. Intente de nuevo.");
+            };
+        };
+
+        window.renderRegister = (type) => {
+            document.getElementById('app-container').innerHTML = `
+                <div class="max-w-md mx-auto py-10 animate-fade-in">
+                    <div class="bg-white p-8 rounded-3xl shadow-2xl border">
+                        <h2 class="text-xl font-bold mb-6 text-center uppercase">Registro ${type}</h2>
+                        <form id="reg-form" class="space-y-4">
+                            <input type="text" id="reg-name" placeholder="${type === 'empresa' ? 'Nombre de la Empresa' : 'Nombre Completo'}" required class="w-full p-4 bg-slate-50 border rounded-2xl">
+                            <input type="email" id="reg-email" placeholder="Email" required class="w-full p-4 bg-slate-50 border rounded-2xl">
+                            <input type="password" id="reg-pass" placeholder="Contraseña" required class="w-full p-4 bg-slate-50 border rounded-2xl">
+                            <button type="submit" class="w-full bg-indigo-600 text-white py-4 rounded-2xl font-bold">REGISTRARME</button>
+                        </form>
+                    </div>
+                </div>`;
+            document.getElementById('reg-form').onsubmit = async (e) => {
+                e.preventDefault();
+                await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'usuarios_sistema'), {
+                    nombre: document.getElementById('reg-name').value,
+                    email: document.getElementById('reg-email').value,
+                    password: document.getElementById('reg-pass').value,
+                    tipo: type,
+                    timestamp: serverTimestamp()
+                });
+                alert("Cuenta creada con éxito.");
+                renderLogin(type);
+            };
+        };
+
+        async function renderEmpresaDashboard(user) {
+            const container = document.getElementById('app-container');
+            container.innerHTML = `
+                <div class="max-w-5xl mx-auto py-8 animate-fade-in">
+                    <div class="bg-white p-8 rounded-3xl border mb-8 flex justify-between items-center">
+                        <div>
+                            <h2 class="text-3xl font-black">Portal de Reclutamiento</h2>
+                            <p class="text-slate-500">Bienvenido, ${user.nombre}. Explora el talento disponible.</p>
+                        </div>
+                        ${currentUser?.tipo === 'admin' ? `<button onclick="renderAdminPanel()" class="text-sm bg-slate-900 text-white px-4 py-2 rounded-xl">Volver al Panel Admin</button>` : ''}
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="cv-grid"></div>
+                </div>`;
+            
+            const cvsSnap = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'cvs'));
+            const grid = document.getElementById('cv-grid');
+            grid.innerHTML = '';
+            cvsSnap.forEach(d => {
+                const cv = d.data();
+                grid.innerHTML += `
+                    <div class="bg-white p-6 rounded-3xl border hover:shadow-xl transition-all">
+                        <div class="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center mb-4 overflow-hidden">
+                            ${cv.foto ? `<img src="${cv.foto}" class="w-full h-full object-cover">` : `<i class="fas fa-id-card text-xl"></i>`}
+                        </div>
+                        <h3 class="font-bold text-lg">${cv.nombre}</h3>
+                        <p class="text-indigo-600 text-sm font-semibold">${cv.profesion || 'Candidato'}</p>
+                        <button onclick="loadCV('${d.id}')" class="mt-6 w-full py-2 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-indigo-600 transition-colors">VER PERFIL COMPLETO</button>
+                    </div>`;
+            });
+        }
+
+        async function renderDashboard(targetUser, isAdminEditing = false) {
+            const cvsSnap = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'cvs'));
+            let cv = null;
+            cvsSnap.forEach(d => { if (d.data().email === targetUser.email) cv = {id: d.id, ...d.data()}; });
+
+            const isFullAccess = isAdminEditing || (currentUser && currentUser.tipo === 'admin');
+
+            const container = document.getElementById('app-container');
+            container.innerHTML = `
+                <div class="max-w-5xl mx-auto py-8 animate-fade-in">
+                    <div class="bg-white p-8 rounded-3xl border mb-10 flex flex-col md:flex-row justify-between items-center gap-6">
+                        <div>
+                            <h2 class="text-3xl font-black text-slate-800">Panel de Control ${isFullAccess ? '<span class="text-red-500 text-sm ml-2">(Modo Admin)</span>' : ''}</h2>
+                            <p class="text-slate-400">Editando perfil de: ${targetUser.email}</p>
+                        </div>
+                        <div class="flex gap-4 flex-wrap">
+                            ${isFullAccess ? `<button onclick="renderAdminPanel()" class="bg-slate-200 text-slate-800 px-6 py-3 rounded-2xl font-bold border">Volver a Consola</button>` : ''}
+                            ${cv ? `
+                                <button onclick="showQR('${cv.id}')" class="bg-slate-900 text-white px-6 py-3 rounded-2xl font-bold flex items-center gap-2"><i class="fas fa-qrcode"></i> MI QR</button>
+                                <button onclick="loadCV('${cv.id}')" class="bg-indigo-50 text-indigo-600 px-6 py-3 rounded-2xl font-bold border border-indigo-100 flex items-center gap-2"><i class="fas fa-eye"></i> VISTA PREVIA</button>
+                            ` : ''}
+                        </div>
+                    </div>
+
+                    <form id="cv-full-form" class="space-y-10">
+                        <div class="bg-white p-8 rounded-3xl border shadow-sm">
+                            <h3 class="font-black text-indigo-600 mb-6 text-xs uppercase border-b pb-2"><i class="fas fa-user"></i> 1. Información General</h3>
+                            
+                            <div class="flex items-center gap-6 mb-6 bg-slate-50 p-4 rounded-2xl border border-dashed border-slate-300">
+                                <img id="cv-foto-preview" src="${cv?.foto || 'https://via.placeholder.com/150'}" class="w-24 h-24 rounded-full object-cover border-4 border-white shadow-md">
+                                <div class="flex-1">
+                                    <label class="block text-xs font-bold text-slate-500 mb-1">URL de Foto de Perfil</label>
+                                    <input type="url" id="cv-foto" value="${cv?.foto || ''}" placeholder="Ej: https://ejemplo.com/mifoto.jpg" class="w-full p-3 bg-white border rounded-xl text-sm" oninput="document.getElementById('cv-foto-preview').src = this.value || 'https://via.placeholder.com/150'">
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                                <input type="text" id="cv-nombre" value="${cv?.nombre || targetUser.nombre}" placeholder="Nombre Completo" class="w-full p-4 bg-slate-50 border rounded-2xl">
+                                <input type="text" id="cv-prof" value="${cv?.profesion || ''}" placeholder="Profesión / Título" class="w-full p-4 bg-slate-50 border rounded-2xl">
+                                <input type="text" id="cv-dir" value="${cv?.direccion || ''}" placeholder="Dirección Residencial" class="w-full p-4 bg-slate-50 border rounded-2xl">
+                                <input type="text" id="cv-tel" value="${cv?.telefono || ''}" placeholder="Teléfono" class="w-full p-4 bg-slate-50 border rounded-2xl">
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div class="relative"><i class="fab fa-linkedin absolute left-4 top-5 text-indigo-400"></i><input type="text" id="cv-lin" value="${cv?.redes?.linkedin || ''}" placeholder="LinkedIn URL" class="p-4 pl-10 bg-slate-50 border rounded-2xl w-full text-xs"></div>
+                                <div class="relative"><i class="fab fa-facebook absolute left-4 top-5 text-blue-500"></i><input type="text" id="cv-fb" value="${cv?.redes?.facebook || ''}" placeholder="Facebook URL" class="p-4 pl-10 bg-slate-50 border rounded-2xl w-full text-xs"></div>
+                                <div class="relative"><i class="fab fa-instagram absolute left-4 top-5 text-pink-500"></i><input type="text" id="cv-ig" value="${cv?.redes?.instagram || ''}" placeholder="Instagram URL" class="p-4 pl-10 bg-slate-50 border rounded-2xl w-full text-xs"></div>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                            <div class="bg-white p-8 rounded-3xl border">
+                                <h3 class="font-black text-indigo-600 mb-4 text-xs uppercase">2. Objetivo Profesional</h3>
+                                <textarea id="cv-obj" rows="5" class="w-full p-4 bg-slate-50 border rounded-2xl">${cv?.objetivo || ''}</textarea>
+                            </div>
+                            <div class="bg-white p-8 rounded-3xl border">
+                                <h3 class="font-black text-indigo-600 mb-4 text-xs uppercase">3. Información Personal</h3>
+                                <div class="grid grid-cols-2 gap-4">
+                                    <input type="text" id="cv-ced" value="${cv?.info_personal?.cedula || ''}" placeholder="Cédula" class="p-4 bg-slate-50 border rounded-2xl text-sm">
+                                    <input type="text" id="cv-civil" value="${cv?.info_personal?.estado_civil || ''}" placeholder="Estado Civil" class="p-4 bg-slate-50 border rounded-2xl text-sm">
+                                    <input type="text" id="cv-nac" value="${cv?.info_personal?.nacionalidad || ''}" placeholder="Nacionalidad" class="p-4 bg-slate-50 border rounded-2xl text-sm">
+                                    <input type="text" id="cv-birth" value="${cv?.info_personal?.nacimiento || ''}" placeholder="F. Nacimiento" class="p-4 bg-slate-50 border rounded-2xl text-sm">
+                                </div>
+                            </div>
+                        </div>
+
+                        ${isFullAccess ? `
+                            <div class="space-y-8">
+                                ${renderEditorSection("Experiencia Laboral", "exp", cv?.experiencia, ["Empresa", "Cargo", "Tiempo", "Descripción"], false)}
+                                ${renderEditorSection("Educación Académica", "edu", cv?.educacion, ["Centro", "Carrera", "Estado"], true)}
+                                ${renderEditorSection("Cursos y Talleres", "cur", cv?.cursos, ["Nombre del Curso", "Lugar"], true)}
+                                ${renderEditorSection("Diplomados", "dip", cv?.diplomados, ["Nombre del Diplomado", "Lugar"], true)}
+                                ${renderEditorSection("Referencias Laborales", "ref", cv?.referencias, ["Nombre", "Empresa", "Cargo", "Teléfono"], false)}
+                            </div>
+
+                            <div class="bg-white p-8 rounded-3xl border shadow-sm">
+                                <h3 class="font-black text-indigo-600 mb-6 text-xs uppercase">Idiomas e Intereses</h3>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <input type="text" id="cv-idi" value="${cv?.idiomas || ''}" placeholder="Idiomas" class="p-4 bg-slate-50 border rounded-2xl w-full">
+                                    <input type="text" id="cv-int" value="${cv?.intereses || ''}" placeholder="Intereses" class="p-4 bg-slate-50 border rounded-2xl w-full">
+                                </div>
+                            </div>
+                        ` : `
+                            <div class="bg-indigo-50 border border-indigo-200 p-8 rounded-3xl flex flex-col items-start gap-4 shadow-sm">
+                                <div class="flex gap-4 items-start w-full">
+                                    <div class="bg-indigo-600 text-white w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0">
+                                        <i class="fas fa-lock"></i>
+                                    </div>
+                                    <div class="w-full">
+                                        <h3 class="font-black text-indigo-900 mb-2">Secciones Protegidas</h3>
+                                        <p class="text-sm text-indigo-800 leading-relaxed mb-4">
+                                            Tu Experiencia Laboral, Educación, Cursos y Certificaciones son validadas por la plataforma y solo pueden ser modificadas por el administrador.
+                                        </p>
+                                        <button type="button" onclick="document.getElementById('solicitud-box').classList.toggle('hidden')" class="bg-indigo-600 text-white px-5 py-2.5 rounded-xl text-xs font-bold hover:bg-indigo-700 transition-colors shadow-md">
+                                            <i class="fas fa-paper-plane mr-1"></i> Enviar Solicitud de Actualización
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <div id="solicitud-box" class="hidden w-full mt-4 bg-white p-6 rounded-2xl border border-indigo-100 shadow-inner">
+                                    <label class="block text-xs font-bold text-slate-600 mb-2">Detalla la nueva información que deseas añadir o modificar:</label>
+                                    <textarea id="sol-texto" rows="4" class="w-full p-4 bg-slate-50 border rounded-xl mb-4 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Ej: Por favor añadir a mi experiencia: Desarrollador Backend en Google. Desde enero 2022 hasta la actualidad..."></textarea>
+                                    
+                                    <label class="block text-xs font-bold text-slate-600 mb-2">URL del Certificado (Opcional):</label>
+                                    <input type="url" id="sol-url" class="w-full p-4 bg-slate-50 border rounded-xl mb-6 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Enlace a tu certificado, Drive, etc.">
+                                    
+                                    <button type="button" onclick="enviarSolicitud('${targetUser.email}', '${targetUser.nombre}')" class="bg-emerald-500 text-white px-6 py-3 rounded-xl text-sm font-bold hover:bg-emerald-600 transition-colors w-full shadow-lg shadow-emerald-200">
+                                        Enviar a Revisión
+                                    </button>
+                                </div>
+                            </div>
+                        `}
+
+                        <button id="btn-submit" type="submit" class="w-full ${isFullAccess ? 'bg-red-600 shadow-red-200 hover:bg-red-800' : 'bg-indigo-600 shadow-indigo-200 hover:bg-slate-900'} text-white py-6 rounded-3xl font-black text-xl shadow-2xl transition-all uppercase tracking-widest">
+                            ${isFullAccess ? 'Guardar Cambios como Admin' : 'Actualizar Mi Perfil Básico'}
+                        </button>
+                    </form>
+                </div>`;
+
+            if (isFullAccess) setupDynamicButtons();
+
+            document.getElementById('cv-full-form').onsubmit = async (e) => {
+                e.preventDefault();
+                
+                try {
+                    const payload = {
+                        nombre: document.getElementById('cv-nombre').value,
+                        profesion: document.getElementById('cv-prof').value,
+                        direccion: document.getElementById('cv-dir').value,
+                        telefono: document.getElementById('cv-tel').value,
+                        email: targetUser.email,
+                        foto: document.getElementById('cv-foto').value, 
+                        redes: {
+                            linkedin: document.getElementById('cv-lin').value,
+                            facebook: document.getElementById('cv-fb').value,
+                            instagram: document.getElementById('cv-ig').value
+                        },
+                        objetivo: document.getElementById('cv-obj').value,
+                        info_personal: {
+                            cedula: document.getElementById('cv-ced').value,
+                            estado_civil: document.getElementById('cv-civil').value,
+                            nacionalidad: document.getElementById('cv-nac').value,
+                            nacimiento: document.getElementById('cv-birth').value
+                        },
+                        timestamp: serverTimestamp()
+                    };
+
+                    if (isFullAccess) {
+                        const getSectionData = (id, fieldsCount, hasImage) => {
+                            const rows = Array.from(document.querySelectorAll(`#${id}-container > div`));
+                            const data = [];
+                            for (let row of rows) {
+                                const item = {};
+                                for (let i = 0; i < fieldsCount; i++) {
+                                    item[`f${i}`] = row.querySelector(`.${id}-field-${i}`).value;
+                                }
+                                if (hasImage) item.img = row.querySelector(`.${id}-img-url`).value;
+                                data.push(item);
+                            }
+                            return data;
+                        };
+
+                        payload.experiencia = getSectionData('exp', 4, false);
+                        payload.educacion = getSectionData('edu', 3, true);
+                        payload.cursos = getSectionData('cur', 2, true);
+                        payload.diplomados = getSectionData('dip', 2, true);
+                        payload.referencias = getSectionData('ref', 4, false);
+                        payload.idiomas = document.getElementById('cv-idi').value;
+                        payload.intereses = document.getElementById('cv-int').value;
+                    } else {
+                        payload.experiencia = cv?.experiencia || [];
+                        payload.educacion = cv?.educacion || [];
+                        payload.cursos = cv?.cursos || [];
+                        payload.diplomados = cv?.diplomados || [];
+                        payload.referencias = cv?.referencias || [];
+                        payload.idiomas = cv?.idiomas || '';
+                        payload.intereses = cv?.intereses || '';
+                    }
+
+                    if (cv) await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'cvs', cv.id), payload);
+                    else await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'cvs'), payload);
+                    
+                    alert("¡CV actualizado con éxito!");
+                    renderDashboard(targetUser, isFullAccess);
+                } catch (err) { alert("Error al guardar: " + err.message); }
+            };
+        }
+
+        // --- FUNCIÓN PARA ENVIAR SOLICITUD ---
+        window.enviarSolicitud = async (email, nombre) => {
+            const texto = document.getElementById('sol-texto').value;
+            const url = document.getElementById('sol-url').value;
+            
+            if(!texto.trim()) { 
+                alert("Debes escribir los detalles de lo que deseas actualizar."); 
+                return; 
+            }
+            
+            try {
+                await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'solicitudes'), {
+                    email: email,
+                    nombre: nombre,
+                    texto: texto,
+                    link: url,
+                    estado: 'pendiente',
+                    fecha: new Date().toLocaleDateString(),
+                    timestamp: serverTimestamp()
+                });
+                alert("¡Solicitud enviada con éxito! El administrador la revisará pronto.");
+                document.getElementById('sol-texto').value = '';
+                document.getElementById('sol-url').value = '';
+                document.getElementById('solicitud-box').classList.add('hidden');
+            } catch(e) { alert("Error al enviar la solicitud: " + e.message); }
+        };
+
+        // --- PANEL DE ADMIN ACTUALIZADO ---
+        window.renderAdminPanel = async () => {
+            const container = document.getElementById('app-container');
+            container.innerHTML = `
+                <div class="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-10 animate-fade-in">
+                    
+                    <div class="bg-white p-8 rounded-3xl border shadow-sm">
+                        <h2 class="text-xl font-black mb-6 text-slate-800 border-b pb-4"><i class="fas fa-users text-indigo-600 mr-2"></i> Base de Candidatos</h2>
+                        <div id="admin-list" class="space-y-3"></div>
+                    </div>
+
+                    <div class="bg-slate-50 p-8 rounded-3xl border shadow-sm h-fit">
+                        <h2 class="text-xl font-black mb-6 text-slate-800 border-b pb-4 border-slate-200"><i class="fas fa-bell text-amber-500 mr-2"></i> Solicitudes Pendientes</h2>
+                        <div id="solicitudes-list" class="space-y-4"></div>
+                    </div>
+                    
+                </div>`;
+
+            // Cargar Usuarios
+            const users = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'usuarios_sistema'));
+            const list = document.getElementById('admin-list');
+            users.forEach(d => {
+                const u = d.data();
+                if(u.tipo === 'admin') return;
+                list.innerHTML += `
+                    <div class="bg-slate-50 p-4 rounded-2xl border flex justify-between items-center hover:shadow-md transition-shadow">
+                        <div>
+                            <p class="font-bold text-sm text-slate-800">${u.nombre}</p>
+                            <p class="text-[10px] text-slate-500 uppercase">${u.email} <span class="text-indigo-600 font-bold ml-1">[${u.tipo}]</span></p>
+                        </div>
+                        <button onclick="adminProxy('${u.nombre}', '${u.email}', '${u.tipo}')" class="bg-indigo-600 text-white px-4 py-2 rounded-xl text-[10px] font-bold hover:bg-indigo-700">Editar Perfil</button>
+                    </div>`;
+            });
+
+            // Cargar Solicitudes
+            const solicitudes = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'solicitudes'));
+            const solList = document.getElementById('solicitudes-list');
+            let hasSolicitudes = false;
+            
+            solicitudes.forEach(d => {
+                const s = d.data();
+                if(s.estado === 'pendiente') {
+                    hasSolicitudes = true;
+                    solList.innerHTML += `
+                        <div class="bg-white p-5 rounded-2xl border border-amber-200 shadow-sm relative" id="sol-${d.id}">
+                            <div class="absolute top-4 right-4 flex gap-2">
+                                <button onclick="marcarSolicitudLista('${d.id}')" class="bg-green-100 text-green-700 hover:bg-green-500 hover:text-white w-8 h-8 rounded-xl flex items-center justify-center text-sm transition-colors" title="Marcar como Completada"><i class="fas fa-check"></i></button>
+                                <button onclick="adminProxy('${s.nombre}', '${s.email}', 'usuario')" class="bg-indigo-100 text-indigo-700 hover:bg-indigo-600 hover:text-white w-8 h-8 rounded-xl flex items-center justify-center text-sm transition-colors" title="Ir a editar el perfil de ${s.nombre}"><i class="fas fa-edit"></i></button>
+                            </div>
+                            <p class="text-sm font-bold text-amber-900 mb-1">${s.nombre}</p>
+                            <p class="text-[10px] text-slate-400 mb-3">${s.email} • ${s.fecha}</p>
+                            <div class="bg-amber-50 p-3 rounded-xl border border-amber-100 mb-3 text-xs text-amber-900 whitespace-pre-wrap">${s.texto}</div>
+                            ${s.link ? `<a href="${s.link}" target="_blank" class="inline-flex items-center gap-2 text-[10px] bg-amber-100 text-amber-800 px-3 py-1.5 rounded-lg font-bold hover:bg-amber-200"><i class="fas fa-link"></i> Ver enlace adjunto</a>` : ''}
+                        </div>`;
+                }
+            });
+            if(!hasSolicitudes) solList.innerHTML = '<div class="text-center py-10 text-slate-400"><i class="fas fa-inbox text-4xl mb-3 opacity-50"></i><p class="text-sm">Todo al día. No hay solicitudes nuevas.</p></div>';
+        };
+
+        // --- FUNCIÓN PARA MARCAR SOLICITUD COMPLETADA ---
+        window.marcarSolicitudLista = async (id) => {
+            if(confirm("¿Estás seguro de marcar esta solicitud como completada? Esto la quitará de tu lista.")) {
+                try {
+                    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'solicitudes', id), { estado: 'completado' });
+                    document.getElementById('sol-'+id).remove();
+                    // Chequear si se quedó vacío visualmente
+                    if(document.getElementById('solicitudes-list').children.length === 0) {
+                        document.getElementById('solicitudes-list').innerHTML = '<div class="text-center py-10 text-slate-400"><i class="fas fa-inbox text-4xl mb-3 opacity-50"></i><p class="text-sm">Todo al día. No hay solicitudes nuevas.</p></div>';
+                    }
+                } catch(e) { alert("Error al actualizar la base de datos."); }
+            }
+        };
+
+        function renderEditorSection(title, id, data, placeholders, hasImage) {
+            return `
+                <div class="bg-white p-8 rounded-3xl border shadow-sm">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="font-black text-indigo-600 text-xs uppercase">${title}</h3>
+                        <button type="button" data-section="${id}" data-fields='${JSON.stringify(placeholders)}' data-image="${hasImage}" class="btn-add-row text-xs bg-slate-900 text-white px-4 py-2 rounded-full hover:bg-indigo-600 transition-colors">
+                            + Añadir Item
+                        </button>
+                    </div>
+                    <div id="${id}-container" class="space-y-4">
+                        ${data?.map(item => `
+                            <div class="grid grid-cols-1 md:grid-cols-${placeholders.length} gap-2 p-4 bg-slate-50 rounded-2xl border relative">
+                                ${placeholders.map((p, i) => `<input type="text" placeholder="${p}" value="${item['f'+i] || ''}" class="p-2 border rounded-lg text-xs ${id}-field-${i}">`).join('')}
+                                ${hasImage ? `<div class="col-span-full mt-2"><input type="url" placeholder="URL del Certificado (Opcional)" value="${item.img || ''}" class="w-full p-2 border rounded-lg text-xs ${id}-img-url bg-white"></div>` : ''}
+                                <button type="button" onclick="this.parentElement.remove()" class="absolute -top-2 -right-2 bg-red-500 text-white w-6 h-6 rounded-full text-xs shadow">×</button>
+                            </div>
+                        `).join('') || ''}
+                    </div>
+                </div>`;
+        }
+
+        function setupDynamicButtons() {
+            document.querySelectorAll('.btn-add-row').forEach(btn => {
+                btn.onclick = () => {
+                    const id = btn.dataset.section;
+                    const placeholders = JSON.parse(btn.dataset.fields);
+                    const hasImage = btn.dataset.image === 'true';
+                    const container = document.getElementById(`${id}-container`);
+                    const div = document.createElement('div');
+                    div.className = `grid grid-cols-1 md:grid-cols-${placeholders.length} gap-2 p-4 bg-slate-50 rounded-2xl border relative animate-fade-in`;
+                    
+                    let html = placeholders.map((p, i) => `<input type="text" placeholder="${p}" class="p-2 border rounded-lg text-xs ${id}-field-${i}">`).join('');
+                    if (hasImage) html += `<div class="col-span-full mt-2"><input type="url" placeholder="URL del Certificado (Opcional)" class="w-full p-2 border rounded-lg text-xs ${id}-img-url bg-white"></div>`;
+                    html += `<button type="button" onclick="this.parentElement.remove()" class="absolute -top-2 -right-2 bg-red-500 text-white w-6 h-6 rounded-full text-xs shadow">×</button>`;
+                    div.innerHTML = html;
+                    container.appendChild(div);
+                };
+            });
+        }
+
+        window.loadCV = async (cvId) => {
+            const snap = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'cvs', cvId));
+            if (!snap.exists()) { alert("Perfil no encontrado."); return; }
+            const d = snap.data();
+
+            document.getElementById('app-container').innerHTML = `
+                <div class="max-w-5xl mx-auto cv-container bg-white shadow-2xl rounded-3xl overflow-hidden mb-20 animate-fade-in border">
+                    <div class="bg-indigo-900 text-white p-12 relative flex flex-col md:flex-row items-center md:items-start gap-8">
+                        <div class="absolute top-4 right-4 no-print flex gap-2">
+                             <button onclick="window.print()" class="bg-white/10 p-2 rounded-lg hover:bg-white/20"><i class="fas fa-print"></i></button>
+                        </div>
+                        ${d.foto ? `<img src="${d.foto}" class="w-32 h-32 md:w-40 md:h-40 rounded-full object-cover border-4 border-white shadow-xl flex-shrink-0">` : ''}
+                        <div class="text-center md:text-left">
+                            <h2 class="text-5xl font-black uppercase tracking-tighter">${d.nombre}</h2>
+                            <p class="text-indigo-300 font-bold text-xl mt-2">${d.profesion || ''}</p>
+                            <div class="mt-6 flex flex-wrap justify-center md:justify-start gap-4 text-sm opacity-80">
+                                <span><i class="fas fa-phone mr-1"></i> ${d.telefono}</span>
+                                <span><i class="fas fa-envelope mr-1"></i> ${d.email}</span>
+                                <span><i class="fas fa-map-marker-alt mr-1"></i> ${d.direccion}</span>
+                            </div>
+                            <div class="mt-4 flex justify-center md:justify-start gap-4 text-2xl no-print">
+                                ${d.redes?.linkedin ? `<a href="${d.redes.linkedin}" target="_blank" class="hover:text-indigo-400"><i class="fab fa-linkedin"></i></a>` : ''}
+                                ${d.redes?.facebook ? `<a href="${d.redes.facebook}" target="_blank" class="hover:text-blue-500"><i class="fab fa-facebook"></i></a>` : ''}
+                                ${d.redes?.instagram ? `<a href="${d.redes.instagram}" target="_blank" class="hover:text-pink-500"><i class="fab fa-instagram"></i></a>` : ''}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="p-12 grid grid-cols-1 lg:grid-cols-3 gap-12">
+                        <div class="lg:col-span-1 space-y-10">
+                            <section>
+                                <h4 class="text-xs font-black uppercase tracking-widest text-indigo-600 mb-4 border-l-4 border-indigo-600 pl-3">Datos Personales</h4>
+                                <ul class="text-xs space-y-2 text-slate-600">
+                                    <li><strong>Cédula:</strong> ${d.info_personal?.cedula || '---'}</li>
+                                    <li><strong>Estado Civil:</strong> ${d.info_personal?.estado_civil || '---'}</li>
+                                    <li><strong>Nacionalidad:</strong> ${d.info_personal?.nacionalidad || '---'}</li>
+                                    <li><strong>F. Nacimiento:</strong> ${d.info_personal?.nacimiento || '---'}</li>
+                                </ul>
+                            </section>
+                            <section>
+                                <h4 class="text-xs font-black uppercase tracking-widest text-indigo-600 mb-4 border-l-4 border-indigo-600 pl-3">Idiomas</h4>
+                                <p class="text-xs text-slate-600">${d.idiomas || 'No especificado'}</p>
+                            </section>
+                            <section>
+                                <h4 class="text-xs font-black uppercase tracking-widest text-indigo-600 mb-4 border-l-4 border-indigo-600 pl-3">Intereses</h4>
+                                <p class="text-xs text-slate-600">${d.intereses || 'No especificado'}</p>
+                            </section>
+                        </div>
+
+                        <div class="lg:col-span-2 space-y-12">
+                            <section>
+                                <h4 class="text-xs font-black uppercase tracking-widest text-indigo-600 border-b pb-2 mb-4">Perfil Profesional</h4>
+                                <p class="text-sm text-slate-600 leading-relaxed">${d.objetivo || 'Sin descripción'}</p>
+                            </section>
+
+                            <section>
+                                <h4 class="text-xs font-black uppercase tracking-widest text-indigo-600 border-b pb-2 mb-6">Experiencia Laboral</h4>
+                                <div class="space-y-6">
+                                    ${d.experiencia && d.experiencia.length > 0 ? d.experiencia.map(e => `
+                                        <div class="pl-4 border-l-2 border-slate-100">
+                                            <p class="font-bold text-slate-800 text-sm">${e.f1} <span class="text-indigo-600 text-[10px] ml-2 uppercase">${e.f2}</span></p>
+                                            <p class="text-xs font-semibold text-slate-400">${e.f0}</p>
+                                            <p class="text-xs text-slate-600 mt-1">${e.f3}</p>
+                                        </div>
+                                    `).join('') : '<p class="text-xs text-slate-400">Sin experiencia registrada</p>'}
+                                </div>
+                            </section>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-10">
+                                <section>
+                                    <h4 class="text-xs font-black uppercase tracking-widest text-indigo-600 border-b pb-2 mb-4">Educación</h4>
+                                    ${d.educacion && d.educacion.length > 0 ? d.educacion.map(e => `
+                                        <div class="mb-4">
+                                            <p class="text-xs font-bold text-slate-800">${e.f1}</p>
+                                            <p class="text-[10px] text-slate-500">${e.f0} | ${e.f2}</p>
+                                            ${e.img ? `<a href="${e.img}" target="_blank" class="inline-block mt-1 text-[10px] bg-indigo-50 text-indigo-600 px-2 py-1 rounded font-bold hover:bg-indigo-100 no-print"><i class="fas fa-link"></i> Ver Certificado</a>` : ''}
+                                        </div>
+                                    `).join('') : '<p class="text-xs text-slate-400">Sin registros</p>'}
+                                </section>
+                                <section>
+                                    <h4 class="text-xs font-black uppercase tracking-widest text-indigo-600 border-b pb-2 mb-4">Cursos y Diplomados</h4>
+                                    ${d.cursos?.map(c => `
+                                        <div class="mb-3">
+                                            <p class="text-[11px] font-bold">${c.f0}</p>
+                                            <p class="text-[10px] text-slate-400">${c.f1}</p>
+                                            ${c.img ? `<a href="${c.img}" target="_blank" class="inline-block mt-1 text-[10px] bg-indigo-50 text-indigo-600 px-2 py-1 rounded font-bold hover:bg-indigo-100 no-print"><i class="fas fa-link"></i> Ver Certificado</a>` : ''}
+                                        </div>
+                                    `).join('')}
+                                    ${d.diplomados?.map(c => `
+                                        <div class="mb-3">
+                                            <p class="text-[11px] font-bold">${c.f0}</p>
+                                            <p class="text-[10px] text-slate-400">${c.f1}</p>
+                                            ${c.img ? `<a href="${c.img}" target="_blank" class="inline-block mt-1 text-[10px] bg-indigo-50 text-indigo-600 px-2 py-1 rounded font-bold hover:bg-indigo-100 no-print"><i class="fas fa-link"></i> Ver Certificado</a>` : ''}
+                                        </div>
+                                    `).join('')}
+                                </section>
+                            </div>
+
+                            <section>
+                                <h4 class="text-xs font-black uppercase tracking-widest text-indigo-600 border-b pb-2 mb-4 mt-6">Referencias Laborales</h4>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    ${d.referencias && d.referencias.length > 0 ? d.referencias.map(r => `
+                                        <div class="bg-slate-50 p-4 rounded-2xl border">
+                                            <p class="text-xs font-bold text-slate-800">${r.f0}</p>
+                                            <p class="text-[10px] text-slate-500">${r.f1} - ${r.f2}</p>
+                                            <p class="text-[10px] text-indigo-600 font-bold mt-1"><i class="fas fa-phone mr-1"></i> ${r.f3}</p>
+                                        </div>
+                                    `).join('') : '<p class="text-xs text-slate-400">Sin referencias</p>'}
+                                </div>
+                            </section>
+                        </div>
+                    </div>
+                </div>`;
+        };
+
+        window.showQR = (id) => {
+            const url = window.location.origin + window.location.pathname + "?cv=" + id;
+            const modal = document.createElement('div');
+            modal.className = "fixed inset-0 bg-slate-900/90 flex items-center justify-center z-[100] p-4 backdrop-blur-sm";
+            modal.innerHTML = `
+                <div class="bg-white p-10 rounded-3xl text-center shadow-2xl max-w-sm w-full border">
+                    <h3 class="font-black text-2xl mb-8">Acceso Rápido QR</h3>
+                    <div id="qr-box" class="mb-8 flex justify-center p-4 bg-slate-50 rounded-2xl border shadow-inner"></div>
+                    <button onclick="this.parentElement.parentElement.remove()" class="w-full bg-slate-900 text-white py-4 rounded-2xl font-bold">Cerrar</button>
+                </div>`;
+            document.body.appendChild(modal);
+            new QRCode(document.getElementById("qr-box"), { text: url, width: 220, height: 220 });
+        };
+
+        window.renderAccessForm = (cvId) => {
+            document.getElementById('app-container').innerHTML = `
+                <div class="max-w-md mx-auto py-20 animate-fade-in">
+                    <button onclick="window.location.href = window.location.pathname" class="mb-6 text-slate-400 hover:text-indigo-600 flex items-center gap-2"><i class="fas fa-home"></i> Ir al Inicio</button>
+                    <div class="bg-white p-10 rounded-3xl shadow-2xl border text-center">
+                        <div class="w-20 h-20 bg-amber-50 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-6"><i class="fas fa-building text-3xl"></i></div>
+                        <h2 class="text-xl font-bold mb-2">Acceso a Perfil</h2>
+                        <p class="text-sm text-slate-500 mb-8">Inicia sesión como <b>Empresa</b> para ver este currículum y guardar el registro de tu visita.</p>
+                        
+                        <form id="access-form" class="space-y-4 text-left">
+                            <input type="email" id="acc-email" placeholder="Correo de tu Empresa" required class="w-full p-4 bg-slate-50 border rounded-2xl outline-none focus:ring-2 focus:ring-amber-500">
+                            <input type="password" id="acc-pass" placeholder="Contraseña" required class="w-full p-4 bg-slate-50 border rounded-2xl outline-none focus:ring-2 focus:ring-amber-500">
+                            <button type="submit" class="w-full bg-slate-900 text-white py-4 rounded-2xl font-bold hover:bg-amber-500 transition-colors shadow-lg">ENTRAR Y VER CV</button>
+                        </form>
+                    </div>
+                </div>`;
+
+            document.getElementById('access-form').onsubmit = async (e) => {
+                e.preventDefault();
+                
+                // 1. Buscamos en la base de datos si las credenciales coinciden con una cuenta de Empresa (o Admin)
+                const usersRef = collection(db, 'artifacts', appId, 'public', 'data', 'usuarios_sistema');
+                const qSnap = await getDocs(usersRef);
+                let found = null;
+                
+                qSnap.forEach(doc => {
+                    const u = doc.data();
+                    if (u.email === document.getElementById('acc-email').value && 
+                        u.password === document.getElementById('acc-pass').value && 
+                        (u.tipo === 'empresa' || u.tipo === 'admin')) {
+                        found = {id: doc.id, ...u};
+                    }
+                });
+
+                if (found) {
+                    // 2. Iniciamos sesión al usuario
+                    currentUser = found;
+                    document.getElementById('role-display').innerText = found.tipo.toUpperCase();
+                    document.getElementById('logout-btn').classList.remove('hidden');
+
+                    // 3. Guardamos el registro de la visita con los datos REALES de la empresa
+                    await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'visitas'), {
+                        empresa_nombre: found.nombre,
+                        empresa_email: found.email,
+                        cv_id: cvId,
+                        fecha: new Date().toLocaleString(),
+                        timestamp: serverTimestamp()
+                    });
+                    
+                    // 4. Mostramos el CV
+                    loadCV(cvId);
+                } else {
+                    alert("Datos incorrectos o no tienes una cuenta de Empresa registrada.");
+                }
+            };
+        };
+
+        window.adminProxy = (nombre, email, tipo) => {
+            const targetUser = {nombre, email, tipo};
+            if(tipo === 'empresa') renderEmpresaDashboard(targetUser); 
+            else renderDashboard(targetUser, true);
+        };
+
+        init();
+    </script>
+</body>
+</html>
