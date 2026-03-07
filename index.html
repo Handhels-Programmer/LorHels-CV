@@ -410,7 +410,7 @@
             } catch(e) { console.error("Error guardando favorito:", e); }
         };
 
-        // --- DASHBOARD DEL CANDIDATO ---
+        // --- DASHBOARD DEL CANDIDATO (Con editor de Habilidades) ---
         async function renderDashboard(targetUser, isAdminEditing = false) {
             const cvsSnap = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'cvs'));
             let cv = null;
@@ -495,11 +495,34 @@
                                 ${renderEditorSection("Referencias Laborales", "ref", cv?.referencias, ["Nombre", "Empresa", "Cargo", "Teléfono"], false)}
                             </div>
 
-                            <div class="bg-white p-8 rounded-3xl border shadow-sm">
-                                <h3 class="font-black text-indigo-600 mb-6 text-xs uppercase">Idiomas e Intereses</h3>
+                            <div class="bg-white p-8 rounded-3xl border shadow-sm mt-8">
+                                <h3 class="font-black text-indigo-600 mb-6 text-xs uppercase border-b pb-2">Habilidades, Idiomas e Intereses</h3>
+                                
+                                <div class="mb-8">
+                                    <div class="flex justify-between items-center mb-4">
+                                        <label class="text-[10px] font-black text-slate-400">LISTA DE HABILIDADES</label>
+                                        <button type="button" id="btn-add-hab" class="text-[10px] bg-slate-900 text-white px-3 py-1.5 rounded-full hover:bg-indigo-600 transition-colors shadow-sm">+ Añadir Habilidad</button>
+                                    </div>
+                                    <div id="hab-container" class="space-y-3">
+                                        ${cv?.habilidades_lista?.map(h => `
+                                            <div class="grid grid-cols-1 md:grid-cols-2 gap-2 p-4 bg-slate-50 rounded-2xl border relative animate-fade-in">
+                                                <input type="text" placeholder="Habilidad (Ej: Liderazgo)" value="${h.nombre}" class="p-2 border rounded-lg text-sm hab-nom outline-none focus:border-indigo-400">
+                                                <input type="text" placeholder="Descripción breve" value="${h.desc}" class="p-2 border rounded-lg text-sm hab-des outline-none focus:border-indigo-400">
+                                                <button type="button" onclick="this.parentElement.remove()" class="absolute -top-2 -right-2 bg-red-500 text-white w-6 h-6 rounded-full text-xs shadow">×</button>
+                                            </div>
+                                        `).join('') || ''}
+                                    </div>
+                                </div>
+
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <input type="text" id="cv-idi" value="${cv?.idiomas || ''}" placeholder="Idiomas" class="p-4 bg-slate-50 border rounded-2xl w-full">
-                                    <input type="text" id="cv-int" value="${cv?.intereses || ''}" placeholder="Intereses" class="p-4 bg-slate-50 border rounded-2xl w-full">
+                                    <div class="space-y-2">
+                                        <label class="text-[10px] font-black text-slate-400">IDIOMAS</label>
+                                        <input type="text" id="cv-idi" value="${cv?.idiomas || ''}" placeholder="Ej: Inglés (Avanzado), Español (Nativo)" class="p-4 bg-slate-50 border rounded-2xl w-full text-sm">
+                                    </div>
+                                    <div class="space-y-2">
+                                        <label class="text-[10px] font-black text-slate-400">INTERESES</label>
+                                        <input type="text" id="cv-int" value="${cv?.intereses || ''}" placeholder="Ej: Tecnología, Diseño, Lectura" class="p-4 bg-slate-50 border rounded-2xl w-full text-sm">
+                                    </div>
                                 </div>
                             </div>
                         ` : `
@@ -521,7 +544,7 @@
                                 
                                 <div id="solicitud-box" class="hidden w-full mt-4 bg-white p-6 rounded-2xl border border-indigo-100 shadow-inner">
                                     <label class="block text-xs font-bold text-slate-600 mb-2">Detalles de la modificación:</label>
-                                    <textarea id="sol-texto" rows="4" class="w-full p-4 bg-slate-50 border rounded-xl mb-4 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Ej: Por favor añadir a mi experiencia..."></textarea>
+                                    <textarea id="sol-texto" rows="4" class="w-full p-4 bg-slate-50 border rounded-xl mb-4 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Ej: Por favor añadir a mi experiencia... o añadir la Habilidad: Trabajo en Equipo"></textarea>
                                     
                                     <label class="block text-xs font-bold text-slate-600 mb-2">URL del Certificado (Opcional):</label>
                                     <input type="url" id="sol-url" class="w-full p-4 bg-slate-50 border rounded-xl mb-6 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Enlace a tu certificado, Drive, etc.">
@@ -539,7 +562,25 @@
                     </form>
                 </div>`;
 
-            if (isFullAccess) setupDynamicButtons();
+            if (isFullAccess) {
+                setupDynamicButtons();
+                
+                // Lógica del botón de añadir nueva Habilidad
+                const btnAddHab = document.getElementById('btn-add-hab');
+                if(btnAddHab) {
+                    btnAddHab.onclick = () => {
+                        const container = document.getElementById('hab-container');
+                        const div = document.createElement('div');
+                        div.className = "grid grid-cols-1 md:grid-cols-2 gap-2 p-4 bg-slate-50 rounded-2xl border relative animate-fade-in";
+                        div.innerHTML = `
+                            <input type="text" placeholder="Habilidad (Ej: Liderazgo)" class="p-2 border rounded-lg text-sm hab-nom outline-none focus:border-indigo-400">
+                            <input type="text" placeholder="Descripción breve" class="p-2 border rounded-lg text-sm hab-des outline-none focus:border-indigo-400">
+                            <button type="button" onclick="this.parentElement.remove()" class="absolute -top-2 -right-2 bg-red-500 text-white w-6 h-6 rounded-full text-xs shadow">×</button>
+                        `;
+                        container.appendChild(div);
+                    };
+                }
+            }
 
             document.getElementById('cv-full-form').onsubmit = async (e) => {
                 e.preventDefault();
@@ -586,14 +627,23 @@
                         payload.cursos = getSectionData('cur', 2, true);
                         payload.diplomados = getSectionData('dip', 2, true);
                         payload.referencias = getSectionData('ref', 4, false);
+                        
+                        // Recolectar Habilidades
+                        payload.habilidades_lista = Array.from(document.querySelectorAll('#hab-container > div')).map(row => ({
+                            nombre: row.querySelector('.hab-nom').value,
+                            desc: row.querySelector('.hab-des').value
+                        }));
+                        
                         payload.idiomas = document.getElementById('cv-idi').value;
                         payload.intereses = document.getElementById('cv-int').value;
                     } else {
+                        // Si no es admin, mantenemos intactos los arrays protegidos en la BD
                         payload.experiencia = cv?.experiencia || [];
                         payload.educacion = cv?.educacion || [];
                         payload.cursos = cv?.cursos || [];
                         payload.diplomados = cv?.diplomados || [];
                         payload.referencias = cv?.referencias || [];
+                        payload.habilidades_lista = cv?.habilidades_lista || [];
                         payload.idiomas = cv?.idiomas || '';
                         payload.intereses = cv?.intereses || '';
                     }
@@ -818,52 +868,158 @@
 
             document.getElementById('app-container').innerHTML = `
                 <div class="max-w-5xl mx-auto cv-container bg-white shadow-2xl rounded-3xl overflow-hidden mb-20 animate-fade-in border">
+                    
                     <div class="bg-indigo-900 text-white p-12 relative flex flex-col md:flex-row items-center md:items-start gap-8">
+                        
                         <div class="absolute top-4 right-4 no-print flex gap-2 items-center">
-                             <button onclick="window.print()" title="Impresión Básica" class="text-white/70 hover:text-white p-2 transition-colors"><i class="fas fa-print text-xl"></i></button>
+                             <button onclick="window.print()" title="Imprimir" class="text-white/70 hover:text-white p-2 transition-colors"><i class="fas fa-print text-xl"></i></button>
                              <button onclick="descargarPDF('${d.nombre}')" class="bg-indigo-500 text-white px-4 py-2.5 rounded-xl hover:bg-indigo-400 font-black text-xs flex items-center gap-2 shadow-lg transition-all hover:-translate-y-1">
                                  <i class="fas fa-file-pdf text-lg"></i> DESCARGAR PDF
                              </button>
                         </div>
-                        ${d.foto ? `<img src="${d.foto}" class="w-32 h-32 md:w-40 md:h-40 rounded-full object-cover border-4 border-white shadow-xl flex-shrink-0">` : ''}
-                        <div class="text-center md:text-left">
-                            <h2 class="text-5xl font-black uppercase tracking-tighter">${d.nombre}</h2>
+                        
+                        ${d.foto ? `<img src="${d.foto}" class="w-32 h-32 md:w-40 md:h-40 rounded-full object-cover border-4 border-white shadow-xl flex-shrink-0" crossorigin="anonymous">` : ''}
+                        
+                        <div class="text-center md:text-left w-full mt-4 md:mt-0">
+                            <h2 class="text-5xl font-black uppercase tracking-tighter">${d.nombre || 'Sin Nombre'}</h2>
                             <p class="text-indigo-300 font-bold text-xl mt-2">${d.profesion || ''}</p>
-                            <div class="mt-6 flex flex-wrap justify-center md:justify-start gap-4 text-sm opacity-80">
-                                <span><i class="fas fa-phone mr-1"></i> ${d.telefono}</span>
-                                <span><i class="fas fa-envelope mr-1"></i> ${d.email}</span>
-                                <span><i class="fas fa-map-marker-alt mr-1"></i> ${d.direccion}</span>
+                            
+                            <div class="mt-6 flex flex-wrap justify-center md:justify-start gap-5 text-sm opacity-90">
+                                ${d.telefono ? `<span><i class="fas fa-phone mr-2"></i>${d.telefono}</span>` : ''}
+                                ${d.email ? `<span><i class="fas fa-envelope mr-2"></i>${d.email}</span>` : ''}
+                                ${d.direccion ? `<span><i class="fas fa-map-marker-alt mr-2"></i>${d.direccion}</span>` : ''}
+                            </div>
+                            
+                            <div class="mt-6 flex justify-center md:justify-start gap-5 text-2xl no-print">
+                                ${d.redes?.linkedin ? `<a href="${d.redes.linkedin}" target="_blank" class="text-white/60 hover:text-indigo-400 transition-colors"><i class="fab fa-linkedin"></i></a>` : ''}
+                                ${d.redes?.facebook ? `<a href="${d.redes.facebook}" target="_blank" class="text-white/60 hover:text-blue-400 transition-colors"><i class="fab fa-facebook"></i></a>` : ''}
+                                ${d.redes?.instagram ? `<a href="${d.redes.instagram}" target="_blank" class="text-white/60 hover:text-pink-400 transition-colors"><i class="fab fa-instagram"></i></a>` : ''}
                             </div>
                         </div>
                     </div>
+
                     <div class="p-12 grid grid-cols-1 lg:grid-cols-3 gap-12">
+                        
                         <div class="lg:col-span-1 space-y-10">
+                            
                             <section>
                                 <h4 class="text-xs font-black uppercase tracking-widest text-indigo-600 mb-4 border-l-4 border-indigo-600 pl-3">Datos Personales</h4>
-                                <ul class="text-xs space-y-2 text-slate-600">
-                                    <li><strong>Cédula:</strong> ${d.info_personal?.cedula || '---'}</li>
-                                    <li><strong>Nacionalidad:</strong> ${d.info_personal?.nacionalidad || '---'}</li>
+                                <ul class="text-xs space-y-3 text-slate-600">
+                                    ${d.info_personal?.cedula ? `<li><strong class="text-slate-800">Cédula:</strong><br> ${d.info_personal.cedula}</li>` : ''}
+                                    ${d.info_personal?.estado_civil ? `<li><strong class="text-slate-800">Estado Civil:</strong><br> ${d.info_personal.estado_civil}</li>` : ''}
+                                    ${d.info_personal?.nacionalidad ? `<li><strong class="text-slate-800">Nacionalidad:</strong><br> ${d.info_personal.nacionalidad}</li>` : ''}
+                                    ${d.info_personal?.nacimiento ? `<li><strong class="text-slate-800">F. Nacimiento:</strong><br> ${d.info_personal.nacimiento}</li>` : ''}
                                 </ul>
                             </section>
-                            <section><h4 class="text-xs font-black uppercase tracking-widest text-indigo-600 mb-4 border-l-4 border-indigo-600 pl-3">Idiomas</h4><p class="text-xs text-slate-600">${d.idiomas || '---'}</p></section>
-                        </div>
-                        <div class="lg:col-span-2 space-y-12">
-                            <section><h4 class="text-xs font-black uppercase tracking-widest text-indigo-600 border-b pb-2 mb-4">Perfil</h4><p class="text-sm text-slate-600 leading-relaxed">${d.objetivo || 'Sin descripción'}</p></section>
+
+                            ${d.habilidades_lista && d.habilidades_lista.length > 0 ? `
                             <section>
-                                <h4 class="text-xs font-black uppercase tracking-widest text-indigo-600 border-b pb-2 mb-6">Experiencia</h4>
-                                <div class="space-y-6">${d.experiencia?.map(e => `<div class="pl-4 border-l-2 border-slate-100"><p class="font-bold text-slate-800 text-sm">${e.f1} <span class="text-indigo-600 text-[10px] ml-2 uppercase">${e.f2}</span></p><p class="text-xs font-semibold text-slate-400">${e.f0}</p><p class="text-xs text-slate-600 mt-1">${e.f3}</p></div>`).join('') || '<p class="text-xs text-slate-400">Sin experiencia</p>'}</div>
+                                <h4 class="text-xs font-black uppercase tracking-widest text-indigo-600 mb-4 border-l-4 border-indigo-600 pl-3">Habilidades</h4>
+                                <div class="space-y-4">
+                                    ${d.habilidades_lista.map(h => `
+                                        <div>
+                                            <p class="text-[11px] font-bold text-slate-800 uppercase">${h.nombre}</p>
+                                            <p class="text-[10px] text-slate-500 mt-1">${h.desc}</p>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </section>` : ''}
+
+                            ${d.idiomas ? `
+                            <section>
+                                <h4 class="text-xs font-black uppercase tracking-widest text-indigo-600 mb-4 border-l-4 border-indigo-600 pl-3">Idiomas</h4>
+                                <p class="text-xs text-slate-600 leading-relaxed">${d.idiomas}</p>
+                            </section>` : ''}
+
+                            ${d.intereses ? `
+                            <section>
+                                <h4 class="text-xs font-black uppercase tracking-widest text-indigo-600 mb-4 border-l-4 border-indigo-600 pl-3">Intereses</h4>
+                                <p class="text-xs text-slate-600 leading-relaxed">${d.intereses}</p>
+                            </section>` : ''}
+                        </div>
+
+                        <div class="lg:col-span-2 space-y-12">
+                            
+                            ${d.objetivo ? `
+                            <section>
+                                <h4 class="text-xs font-black uppercase tracking-widest text-indigo-600 border-b pb-2 mb-4">Perfil Profesional</h4>
+                                <p class="text-sm text-slate-600 leading-relaxed text-justify">${d.objetivo}</p>
+                            </section>` : ''}
+
+                            <section>
+                                <h4 class="text-xs font-black uppercase tracking-widest text-indigo-600 border-b pb-2 mb-6">Experiencia Laboral</h4>
+                                <div class="space-y-6">
+                                    ${d.experiencia && d.experiencia.length > 0 ? d.experiencia.map(e => `
+                                        <div class="pl-4 border-l-2 border-indigo-200 hover:border-indigo-500 transition-colors">
+                                            <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1">
+                                                <p class="font-bold text-slate-800 text-sm">${e.f1}</p>
+                                                <span class="text-indigo-600 text-[10px] font-bold uppercase bg-indigo-50 px-2 py-1 rounded w-fit">${e.f2}</span>
+                                            </div>
+                                            <p class="text-xs font-semibold text-slate-500 mt-1"><i class="fas fa-building mr-1"></i> ${e.f0}</p>
+                                            <p class="text-xs text-slate-600 mt-2 leading-relaxed">${e.f3}</p>
+                                        </div>
+                                    `).join('') : '<p class="text-xs text-slate-400">Sin experiencia registrada</p>'}
+                                </div>
                             </section>
+
+                            <section>
+                                <h4 class="text-xs font-black uppercase tracking-widest text-indigo-600 border-b pb-2 mb-6">Educación Académica</h4>
+                                <div class="space-y-4">
+                                    ${d.educacion && d.educacion.length > 0 ? d.educacion.map(e => `
+                                        <div class="bg-slate-50 p-5 rounded-xl border border-slate-100">
+                                            <p class="text-sm font-bold text-slate-800">${e.f1}</p>
+                                            <p class="text-[11px] text-slate-500 mt-2 flex flex-wrap gap-3">
+                                                <span><i class="fas fa-university mr-1"></i> ${e.f0}</span>
+                                                <span><i class="fas fa-graduation-cap mr-1"></i> ${e.f2}</span>
+                                            </p>
+                                            ${e.img ? `<a href="${e.img}" target="_blank" class="inline-block mt-3 text-[10px] bg-indigo-100 text-indigo-700 px-3 py-1.5 rounded-lg font-bold hover:bg-indigo-200 no-print transition-colors"><i class="fas fa-external-link-alt mr-1"></i> Ver Certificado</a>` : ''}
+                                        </div>
+                                    `).join('') : '<p class="text-xs text-slate-400">Sin registros</p>'}
+                                </div>
+                            </section>
+
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-10">
                                 <section>
-                                    <h4 class="text-xs font-black uppercase tracking-widest text-indigo-600 border-b pb-2 mb-4">Educación</h4>
-                                    ${d.educacion?.map(e => `<div class="mb-4"><p class="text-xs font-bold text-slate-800">${e.f1}</p><p class="text-[10px] text-slate-500">${e.f0} | ${e.f2}</p>${e.img ? `<a href="${e.img}" target="_blank" class="inline-block mt-1 text-[10px] bg-indigo-50 text-indigo-600 px-2 py-1 rounded font-bold hover:bg-indigo-100 no-print"><i class="fas fa-link"></i> Ver Certificado</a>` : ''}</div>`).join('') || '<p class="text-xs text-slate-400">Sin registros</p>'}
+                                    <h4 class="text-xs font-black uppercase tracking-widest text-indigo-600 border-b pb-2 mb-5">Cursos y Talleres</h4>
+                                    <div class="space-y-5">
+                                        ${d.cursos && d.cursos.length > 0 ? d.cursos.map(c => `
+                                            <div class="relative pl-3 border-l border-slate-200">
+                                                <p class="text-[12px] font-bold text-slate-800 leading-tight">${c.f0}</p>
+                                                <p class="text-[10px] text-slate-500 mt-1"><i class="fas fa-map-marker-alt mr-1"></i> ${c.f1}</p>
+                                                ${c.img ? `<a href="${c.img}" target="_blank" class="inline-block mt-2 text-[10px] text-indigo-600 font-bold hover:underline no-print"><i class="fas fa-certificate mr-1"></i> Ver Credencial</a>` : ''}
+                                            </div>
+                                        `).join('') : '<p class="text-xs text-slate-400">No especificado</p>'}
+                                    </div>
                                 </section>
+
                                 <section>
-                                    <h4 class="text-xs font-black uppercase tracking-widest text-indigo-600 border-b pb-2 mb-4">Cursos y Diplomados</h4>
-                                    ${d.cursos?.map(c => `<div class="mb-3"><p class="text-[11px] font-bold">${c.f0}</p><p class="text-[10px] text-slate-400">${c.f1}</p>${c.img ? `<a href="${c.img}" target="_blank" class="text-[10px] text-indigo-600 font-bold"><i class="fas fa-link"></i> Ver</a>` : ''}</div>`).join('') || ''}
-                                    ${d.diplomados?.map(c => `<div class="mb-3"><p class="text-[11px] font-bold">${c.f0}</p><p class="text-[10px] text-slate-400">${c.f1}</p>${c.img ? `<a href="${c.img}" target="_blank" class="text-[10px] text-indigo-600 font-bold"><i class="fas fa-link"></i> Ver</a>` : ''}</div>`).join('') || ''}
+                                    <h4 class="text-xs font-black uppercase tracking-widest text-indigo-600 border-b pb-2 mb-5">Diplomados</h4>
+                                    <div class="space-y-5">
+                                        ${d.diplomados && d.diplomados.length > 0 ? d.diplomados.map(c => `
+                                            <div class="relative pl-3 border-l border-slate-200">
+                                                <p class="text-[12px] font-bold text-slate-800 leading-tight">${c.f0}</p>
+                                                <p class="text-[10px] text-slate-500 mt-1"><i class="fas fa-map-marker-alt mr-1"></i> ${c.f1}</p>
+                                                ${c.img ? `<a href="${c.img}" target="_blank" class="inline-block mt-2 text-[10px] text-indigo-600 font-bold hover:underline no-print"><i class="fas fa-certificate mr-1"></i> Ver Credencial</a>` : ''}
+                                            </div>
+                                        `).join('') : '<p class="text-xs text-slate-400">No especificado</p>'}
+                                    </div>
                                 </section>
                             </div>
+
+                            <section>
+                                <h4 class="text-xs font-black uppercase tracking-widest text-indigo-600 border-b pb-2 mb-6 mt-6">Referencias Laborales</h4>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    ${d.referencias && d.referencias.length > 0 ? d.referencias.map(r => `
+                                        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 hover:border-indigo-300 hover:shadow-md transition-all">
+                                            <p class="text-[13px] font-black text-slate-800">${r.f0}</p>
+                                            <p class="text-[11px] text-slate-500 mt-1">${r.f2}</p>
+                                            <p class="text-[10px] text-slate-400 mt-0.5"><i class="fas fa-building mr-1 text-slate-300"></i> ${r.f1}</p>
+                                            <p class="text-[12px] text-indigo-600 font-bold mt-3 bg-indigo-100/50 w-fit px-2 py-1 rounded"><i class="fas fa-phone mr-1"></i> ${r.f3}</p>
+                                        </div>
+                                    `).join('') : '<p class="text-xs text-slate-400">Sin referencias</p>'}
+                                </div>
+                            </section>
+
                         </div>
                     </div>
                 </div>`;
