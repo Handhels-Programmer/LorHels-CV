@@ -741,7 +741,7 @@
                             <div class="mt-auto bg-indigo-950 p-5 rounded-2xl border border-indigo-700">
                                 <p class="text-xs text-indigo-300 font-bold mb-3 uppercase tracking-wider">Instrucciones de Activación:</p>
                                 <ol class="text-xs text-indigo-100 space-y-3 mb-5 ml-4 list-decimal">
-                                    <li>Realiza el pago correspondiente.</li>
+                                    <li>Realiza el pago correspondiente a la cuenta BHD - <b>30912740013</b>.</li>
                                     <li>Envía el comprobante por WhatsApp al <br><b><i class="fab fa-whatsapp text-green-400 mr-1 mt-1"></i> +1 829-913-5723</b></li>
                                     <li>Haz clic en el botón de abajo para notificar al administrador.</li>
                                 </ol>
@@ -868,14 +868,12 @@
 
             document.getElementById('app-container').innerHTML = `
                 <div class="max-w-5xl mx-auto cv-container bg-white shadow-2xl rounded-3xl overflow-hidden mb-20 animate-fade-in border">
-                    
                     <div class="bg-indigo-900 text-white p-12 relative flex flex-col md:flex-row items-center md:items-start gap-8">
-                        
                         <div class="absolute top-4 right-4 no-print flex gap-2 items-center">
-                             <button onclick="window.print()" title="Imprimir" class="text-white/70 hover:text-white p-2 transition-colors"><i class="fas fa-print text-xl"></i></button>
-                             <button onclick="descargarPDF('${d.nombre}')" class="bg-indigo-500 text-white px-4 py-2.5 rounded-xl hover:bg-indigo-400 font-black text-xs flex items-center gap-2 shadow-lg transition-all hover:-translate-y-1">
-                                 <i class="fas fa-file-pdf text-lg"></i> DESCARGAR PDF
-                             </button>
+                            <button onclick="window.print()" title="Imprimir" class="text-white/70 hover:text-white p-2 transition-colors"><i class="fas fa-print text-xl"></i></button>
+                            <button onclick="descargarPDF('${d.nombre}')" class="bg-indigo-500 text-white px-4 py-2.5 rounded-xl hover:bg-indigo-400 font-black text-xs flex items-center gap-2 shadow-lg transition-all hover:-translate-y-1">
+                                <i class="fas fa-file-pdf text-lg"></i> DESCARGAR PDF
+                            </button>
                         </div>
                         
                         ${d.foto ? `<img src="${d.foto}" class="w-32 h-32 md:w-40 md:h-40 rounded-full object-cover border-4 border-white shadow-xl flex-shrink-0" crossorigin="anonymous">` : ''}
@@ -899,9 +897,7 @@
                     </div>
 
                     <div class="p-12 grid grid-cols-1 lg:grid-cols-3 gap-12">
-                        
                         <div class="lg:col-span-1 space-y-10">
-                            
                             <section>
                                 <h4 class="text-xs font-black uppercase tracking-widest text-indigo-600 mb-4 border-l-4 border-indigo-600 pl-3">Datos Personales</h4>
                                 <ul class="text-xs space-y-3 text-slate-600">
@@ -1019,10 +1015,10 @@
                                     `).join('') : '<p class="text-xs text-slate-400">Sin referencias</p>'}
                                 </div>
                             </section>
-
                         </div>
                     </div>
-                </div>`;
+                </div>
+            `;
         };
 
         window.showQR = (id) => {
@@ -1052,7 +1048,8 @@
                             <button type="submit" class="w-full bg-slate-900 text-white py-4 rounded-2xl font-bold">ENTRAR Y VER CV</button>
                         </form>
                     </div>
-                </div>`;
+                </div>
+            `;
             
             document.getElementById('access-form').onsubmit = async (e) => {
                 e.preventDefault();
@@ -1092,7 +1089,8 @@
                         <h2 class="text-lg font-black mb-6 text-indigo-900 border-b pb-4"><i class="fas fa-gem text-indigo-500 mr-2"></i> Pagos PRO</h2>
                         <div id="pagos-list" class="space-y-4 max-h-[500px] overflow-y-auto pr-2"></div>
                     </div>
-                </div>`;
+                </div>
+            `;
 
             window.allAdminUsers = [];
             const users = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'usuarios_sistema'));
@@ -1113,7 +1111,8 @@
                             </div>
                             <p class="text-xs font-bold text-amber-900 mb-1">${s.nombre}</p>
                             <div class="bg-amber-50 p-2 rounded-lg border border-amber-100 mb-2 text-[10px] text-amber-900 whitespace-pre-wrap">${s.texto}</div>
-                        </div>`;
+                        </div>
+                    `;
                 }
             });
             if(solList.innerHTML === '') solList.innerHTML = '<p class="text-xs text-slate-400 text-center py-5">No hay solicitudes.</p>';
@@ -1132,7 +1131,8 @@
                             <button onclick="aprobarPlanPRO('${d.id}', '${p.usuario_id}')" class="w-full bg-emerald-500 text-white hover:bg-emerald-600 px-3 py-2 rounded-xl flex items-center justify-center gap-2 text-xs font-bold transition-colors shadow-md">
                                 <i class="fas fa-check-double"></i> Aprobar Cuenta PRO
                             </button>
-                        </div>`;
+                        </div>
+                    `;
                 }
             });
             if(pagosList.innerHTML === '') pagosList.innerHTML = '<p class="text-xs text-indigo-300 text-center py-5">Todo al día. Sin pagos pendientes.</p>';
