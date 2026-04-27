@@ -11,40 +11,43 @@
     <style>
         @media print {
             .no-print { display: none !important; }
-            body { background: white; padding: 0; }
+            body { background: #0f172a !important; padding: 0; color: white !important; }
             .cv-container { box-shadow: none; border: none; width: 100%; max-width: 100%; margin: 0; }
         }
         .animate-fade-in { animation: fadeIn 0.3s ease-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* Scrollbar personalizada para Modo Oscuro */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-900 font-sans">
+<body class="bg-slate-900 text-slate-200 font-sans min-h-screen flex flex-col selection:bg-blue-500 selection:text-white">
 
-    <!-- Navegación -->
-    <nav class="bg-indigo-900 text-white p-4 shadow-xl no-print">
+    <nav class="bg-slate-950 text-white p-4 shadow-xl border-b border-slate-800 no-print">
         <div class="container mx-auto flex justify-between items-center">
-            <h1 class="text-xl font-black tracking-tighter cursor-pointer" onclick="window.location.reload()">
-                LORHELS<span class="text-indigo-400">-CV</span>
+            <h1 class="text-xl font-black tracking-tighter cursor-pointer hover:text-blue-400 transition-colors" onclick="window.location.reload()">
+                LORHELS<span class="text-blue-500">-CV</span>
             </h1>
             <div id="auth-status" class="flex items-center gap-4">
-                <div id="role-display" class="text-[10px] font-bold bg-indigo-800 px-3 py-1 rounded-full border border-indigo-700 uppercase">Cargando...</div>
-                <button id="logout-btn" onclick="location.reload()" class="hidden text-xs bg-red-500/20 text-red-300 hover:bg-red-500 hover:text-white px-3 py-1 rounded transition-all">Salir</button>
+                <div id="role-display" class="text-[10px] font-bold bg-slate-800 text-blue-400 px-3 py-1 rounded-full border border-slate-700 uppercase shadow-inner">Cargando...</div>
+                <button id="logout-btn" onclick="location.reload()" class="hidden text-xs bg-red-900/30 text-red-400 hover:bg-red-600 hover:text-white px-3 py-1 rounded transition-all border border-red-900/50">Salir</button>
             </div>
         </div>
     </nav>
 
-    <!-- Contenedor Principal -->
-    <main id="app-container" class="container mx-auto mt-6 px-4 pb-32">
+    <main id="app-container" class="container mx-auto mt-6 px-4 pb-32 flex-1">
         <div class="flex justify-center items-center h-64">
-            <div class="animate-spin rounded-full h-12 w-12 border-4 border-indigo-500 border-t-transparent"></div>
+            <div class="animate-spin rounded-full h-12 w-12 border-4 border-slate-700 border-t-blue-500"></div>
         </div>
     </main>
 
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-app.js";
-        // NUEVO: Importamos las funciones de seguridad reales
-        import { getAuth, signInAnonymously, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-auth.js";
-        import { getFirestore, doc, setDoc, getDoc, getDocs, collection, query, addDoc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-firestore.js";
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, getDocs, collection, query, addDoc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyDE0BPfySfOJTOPLGdCnENlHVEyX6wJusU",
@@ -62,97 +65,125 @@
 
         let currentUser = null; 
 
+        // --- SISTEMA DE NOTIFICACIONES (TOAST) ---
+        window.showToast = (message, type = 'success') => {
+            let container = document.getElementById('toast-container');
+            if (!container) {
+                container = document.createElement('div');
+                container.id = 'toast-container';
+                container.className = 'fixed top-5 right-5 z-[99999] flex flex-col gap-3 pointer-events-none';
+                document.body.appendChild(container);
+            }
+
+            const toast = document.createElement('div');
+            let bgColor, icon;
+            
+            if (type === 'success') { bgColor = 'bg-emerald-600 border-emerald-500'; icon = 'fa-check-circle'; } 
+            else if (type === 'error') { bgColor = 'bg-red-600 border-red-500'; icon = 'fa-exclamation-triangle'; } 
+            else { bgColor = 'bg-blue-600 border-blue-500'; icon = 'fa-info-circle'; }
+
+            toast.className = `${bgColor} border text-white px-5 py-4 rounded-2xl shadow-[0_5px_20px_rgba(0,0,0,0.5)] flex items-center gap-3 transform transition-all duration-300 translate-x-full opacity-0 max-w-sm w-full`;
+            toast.innerHTML = `<i class="fas ${icon} text-xl flex-shrink-0"></i><p class="text-sm font-medium leading-tight">${message}</p>`;
+
+            container.appendChild(toast);
+
+            // Animar entrada
+            requestAnimationFrame(() => {
+                toast.classList.remove('translate-x-full', 'opacity-0');
+            });
+
+            // Animar salida y remover
+            setTimeout(() => {
+                toast.classList.add('translate-x-full', 'opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 4000);
+        };
+
         // --- SISTEMA DE SESIONES INTELIGENTE ---
         async function init() {
             try {
-                // Firebase detecta automáticamente si alguien ya inició sesión antes
                 onAuthStateChanged(auth, async (user) => {
-                    const params = new URLSearchParams(window.location.search);
-                    const cvId = params.get('cv');
+                    try {
+                        const params = new URLSearchParams(window.location.search);
+                        const cvId = params.get('cv');
 
-                    if (user && !user.isAnonymous) {
-                        // 1. Hay un usuario real logueado. Buscamos sus datos en Firestore.
-                        const userDoc = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'usuarios_sistema', user.uid));
-                        
-                        if (userDoc.exists()) {
-                            let uData = userDoc.data();
+                        if (user && !user.isAnonymous) {
+                            const userDoc = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'usuarios_sistema', user.uid));
                             
-                            // Revisamos si su plan PRO ya expiró
-                            if (uData.plan === 'pro' && uData.expiracion_plan) {
-                                const ahora = new Date().getTime();
-                                if (ahora > uData.expiracion_plan) {
-                                    uData.plan = 'gratis';
-                                    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'usuarios_sistema', user.uid), { plan: 'gratis' });
-                                    alert("⏳ Tu plan PRO ha expirado tras 30 días. Has vuelto al plan Básico gratuito.");
+                            if (userDoc.exists()) {
+                                let uData = userDoc.data();
+                                
+                                if (uData.plan === 'pro' && uData.expiracion_plan) {
+                                    const ahora = new Date().getTime();
+                                    if (ahora > uData.expiracion_plan) {
+                                        uData.plan = 'gratis';
+                                        await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'usuarios_sistema', user.uid), { plan: 'gratis' });
+                                        showToast("Tu plan PRO ha expirado. Has vuelto al plan Básico.", "info");
+                                    }
                                 }
-                            }
 
-                            currentUser = { id: user.uid, ...uData };
-                            
-                            // Actualizamos el menú superior
-                            const logoutBtn = document.getElementById('logout-btn');
-                            logoutBtn.classList.remove('hidden');
-                            logoutBtn.onclick = async () => { await signOut(auth); location.href = window.location.pathname; };
-                            document.getElementById('role-display').innerText = uData.tipo.toUpperCase();
-                            
-                            // 2. ¿Qué hacer con este usuario?
-                            if (cvId) {
-                                // Si escanearon un QR y son Empresa/Admin, registramos visita y mostramos CV directo (sin pedir contraseña)
-                                if(uData.tipo === 'empresa' || uData.tipo === 'admin') {
-                                    await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'visitas'), {
-                                        empresa_nombre: uData.nombre,
-                                        empresa_email: uData.email,
-                                        cv_id: cvId,
-                                        fecha: new Date().toLocaleString(),
-                                        timestamp: serverTimestamp()
-                                    });
-                                    loadCV(cvId);
+                                currentUser = { id: user.uid, ...uData };
+                                
+                                const logoutBtn = document.getElementById('logout-btn');
+                                if(logoutBtn) {
+                                    logoutBtn.classList.remove('hidden');
+                                    logoutBtn.onclick = async () => { await signOut(auth); location.href = window.location.pathname; };
+                                }
+                                const roleDisp = document.getElementById('role-display');
+                                if(roleDisp) roleDisp.innerText = uData.tipo.toUpperCase();
+                                
+                                if (cvId) {
+                                    if(uData.tipo === 'empresa' || uData.tipo === 'admin') {
+                                        await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'visitas'), {
+                                            empresa_nombre: uData.nombre, empresa_email: uData.email, cv_id: cvId, fecha: new Date().toLocaleString(), timestamp: serverTimestamp()
+                                        });
+                                        loadCV(cvId);
+                                    } else {
+                                        showToast("Debes iniciar sesión con una cuenta de Empresa para ver este currículum.", "error");
+                                        await signOut(auth);
+                                        setTimeout(() => location.reload(), 1500);
+                                    }
                                 } else {
-                                    alert("Debes iniciar sesión con una cuenta de Empresa para ver este currículum.");
-                                    await signOut(auth);
-                                    location.reload();
+                                    if (currentUser.tipo === 'admin') renderAdminPanel();
+                                    else if (currentUser.tipo === 'empresa') renderEmpresaDashboard(currentUser);
+                                    else renderDashboard(currentUser, false);
                                 }
                             } else {
-                                // Si no hay QR, lo mandamos a su panel de control
-                                if (currentUser.tipo === 'admin') renderAdminPanel();
-                                else if (currentUser.tipo === 'empresa') renderEmpresaDashboard(currentUser);
-                                else renderDashboard(currentUser, false);
+                                await signOut(auth);
+                                renderWelcome();
                             }
                         } else {
-                            renderWelcome();
+                            if (!user) { try { await signInAnonymously(auth); } catch(err) {} }
+                            if (cvId) renderAccessForm(cvId); 
+                            else renderWelcome();
                         }
-                    } else {
-                        // No hay usuario real. Iniciamos anónimo para poder leer datos básicos.
-                        if (!user) await signInAnonymously(auth);
-                        
-                        // Si escaneó un QR, le pedimos contraseña de empresa. Si no, pantalla de bienvenida.
-                        if (cvId) renderAccessForm(cvId); 
-                        else renderWelcome();
-                    }
+                    } catch(e) { console.error(e); renderWelcome(); }
                 });
             } catch (e) { console.error(e); }
         }
 
         // --- PANTALLAS PRINCIPALES ---
         function renderWelcome() {
-            document.getElementById('role-display').innerText = "Visitante";
+            const roleDisp = document.getElementById('role-display');
+            if(roleDisp) roleDisp.innerText = "Visitante";
+            
             const container = document.getElementById('app-container');
             container.innerHTML = `
                 <div class="max-w-5xl mx-auto py-16 text-center animate-fade-in">
-                    <h2 class="text-6xl font-black mb-6 text-slate-800 tracking-tight">Potencia tu <span class="text-indigo-600">Carrera</span></h2>
-                    <p class="text-slate-500 mb-12 text-xl max-w-2xl mx-auto">Crea un CV digital profesional con acceso vía QR para empresas y reclutadores.</p>
+                    <h2 class="text-6xl font-black mb-6 text-white tracking-tight">Potencia tu <span class="text-blue-500">Carrera</span></h2>
+                    <p class="text-slate-400 mb-12 text-xl max-w-2xl mx-auto">Crea un CV digital profesional con acceso vía QR para empresas y reclutadores.</p>
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
-                        <div onclick="renderAuthOption('admin')" class="bg-white p-8 rounded-3xl border hover:shadow-2xl transition-all cursor-pointer group">
-                            <div class="w-14 h-14 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:bg-slate-800 group-hover:text-white"><i class="fas fa-lock"></i></div>
-                            <h3 class="font-black text-slate-700">ADMIN</h3>
+                        <div onclick="renderAuthOption('admin')" class="bg-slate-800 p-8 rounded-3xl border border-slate-700 hover:border-blue-500 hover:shadow-2xl transition-all cursor-pointer group">
+                            <div class="w-14 h-14 bg-slate-900 rounded-2xl flex items-center justify-center mx-auto mb-4 text-slate-400 group-hover:bg-blue-600 group-hover:text-white transition-colors"><i class="fas fa-lock"></i></div>
+                            <h3 class="font-black text-white">ADMIN</h3>
                         </div>
-                        <div onclick="renderAuthOption('usuario')" class="bg-white p-10 rounded-3xl border-2 border-indigo-100 shadow-xl hover:-translate-y-2 transition-all cursor-pointer group">
-                            <div class="w-16 h-16 bg-indigo-100 text-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:bg-indigo-600 group-hover:text-white"><i class="fas fa-user-tie text-2xl"></i></div>
-                            <h3 class="font-black text-indigo-900">CANDIDATO</h3>
+                        <div onclick="renderAuthOption('usuario')" class="bg-slate-800 p-10 rounded-3xl border-2 border-blue-900/50 shadow-xl hover:-translate-y-2 hover:border-blue-500 transition-all cursor-pointer group">
+                            <div class="w-16 h-16 bg-blue-900/30 text-blue-400 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:bg-blue-600 group-hover:text-white transition-colors"><i class="fas fa-user-tie text-2xl"></i></div>
+                            <h3 class="font-black text-blue-400">CANDIDATO</h3>
                         </div>
-                        <div onclick="renderAuthOption('empresa')" class="bg-white p-8 rounded-3xl border hover:shadow-2xl transition-all cursor-pointer group">
-                            <div class="w-14 h-14 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:bg-amber-600 group-hover:text-white"><i class="fas fa-building"></i></div>
-                            <h3 class="font-black text-slate-700">EMPRESA</h3>
+                        <div onclick="renderAuthOption('empresa')" class="bg-slate-800 p-8 rounded-3xl border border-slate-700 hover:border-blue-500 hover:shadow-2xl transition-all cursor-pointer group">
+                            <div class="w-14 h-14 bg-slate-900 text-slate-400 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:bg-blue-600 group-hover:text-white transition-colors"><i class="fas fa-building"></i></div>
+                            <h3 class="font-black text-white">EMPRESA</h3>
                         </div>
                     </div>
                 </div>`;
@@ -162,43 +193,28 @@
             const container = document.getElementById('app-container');
             container.innerHTML = `
                 <div class="max-w-md mx-auto py-10 animate-fade-in">
-                    <button onclick="renderWelcome()" class="mb-6 text-slate-400 hover:text-indigo-600 flex items-center gap-2"><i class="fas fa-arrow-left"></i> Volver</button>
-                    <div class="bg-white p-8 rounded-3xl shadow-2xl border">
-                        <h2 class="text-2xl font-black mb-8 text-center uppercase tracking-widest text-slate-800">Portal ${type}</h2>
+                    <button onclick="renderWelcome()" class="mb-6 text-slate-400 hover:text-blue-400 flex items-center gap-2 transition-colors"><i class="fas fa-arrow-left"></i> Volver</button>
+                    <div class="bg-slate-800 p-8 rounded-3xl shadow-2xl border border-slate-700">
+                        <h2 class="text-2xl font-black mb-8 text-center uppercase tracking-widest text-white">Portal ${type}</h2>
                         <div class="space-y-4">
-                            <button onclick="renderLogin('${type}')" class="w-full bg-indigo-600 text-white py-4 rounded-2xl font-bold shadow-lg shadow-indigo-200">Iniciar Sesión</button>
-                            ${type !== 'admin' ? `<button onclick="renderRegister('${type}')" class="w-full border-2 border-slate-900 text-slate-900 py-4 rounded-2xl font-bold">Crear Cuenta Nueva</button>` : ''}
+                            <button onclick="renderLogin('${type}')" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold shadow-lg hover:bg-blue-500 transition-colors">Iniciar Sesión</button>
+                            ${type !== 'admin' ? `<button onclick="renderRegister('${type}')" class="w-full border border-slate-600 text-slate-300 py-4 rounded-2xl font-bold hover:bg-slate-700 hover:text-white transition-colors">Crear Cuenta Nueva</button>` : ''}
                         </div>
                     </div>
                 </div>`;
         };
 
-        //window.renderAuthOption = (type) => {
-            //const container = document.getElementById('app-container');
-            //container.innerHTML = `
-                //<div class="max-w-md mx-auto py-10 animate-fade-in">
-                    //<button onclick="renderWelcome()" class="mb-6 text-slate-400 hover:text-indigo-600 flex items-center gap-2"><i class="fas fa-arrow-left"></i> Volver</button>
-                    //<div class="bg-white p-8 rounded-3xl shadow-2xl border">
-                        //<h2 class="text-2xl font-black mb-8 text-center uppercase tracking-widest text-slate-800">Portal ${type}</h2>
-                        //<div class="space-y-4">
-                            //<button onclick="renderLogin('${type}')" class="w-full bg-indigo-600 text-white py-4 rounded-2xl font-bold shadow-lg shadow-indigo-200">Iniciar Sesión</button>
-                            //<button onclick="renderRegister('${type}')" class="w-full border-2 border-slate-900 text-slate-900 py-4 rounded-2xl font-bold">Crear Cuenta Nueva</button>
-                        //</div>
-                    //</div>
-                //</div>`;
-        //};
-
         // --- LOGIN SEGURO CON FIREBASE AUTH ---
         window.renderLogin = (type) => {
             document.getElementById('app-container').innerHTML = `
                 <div class="max-w-md mx-auto py-10 animate-fade-in">
-                    <button onclick="renderAuthOption('${type}')" class="mb-6 text-slate-400 hover:text-indigo-600 flex items-center gap-2"><i class="fas fa-arrow-left"></i> Atrás</button>
-                    <div class="bg-white p-8 rounded-3xl shadow-2xl border">
-                        <h2 class="text-xl font-bold mb-6 text-center">LOGIN ${type.toUpperCase()}</h2>
+                    <button onclick="renderAuthOption('${type}')" class="mb-6 text-slate-400 hover:text-blue-400 flex items-center gap-2"><i class="fas fa-arrow-left"></i> Atrás</button>
+                    <div class="bg-slate-800 p-8 rounded-3xl shadow-2xl border border-slate-700">
+                        <h2 class="text-xl font-bold mb-6 text-center text-white">LOGIN ${type.toUpperCase()}</h2>
                         <form id="login-form" class="space-y-4">
-                            <input type="email" id="log-email" placeholder="Correo Electrónico" required class="w-full p-4 bg-slate-50 border rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500">
-                            <input type="password" id="log-pass" placeholder="Contraseña" required class="w-full p-4 bg-slate-50 border rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500">
-                            <button type="submit" class="w-full bg-indigo-600 text-white py-4 rounded-2xl font-bold">ENTRAR</button>
+                            <input type="email" id="log-email" placeholder="Correo Electrónico" required class="w-full p-4 bg-slate-900 border border-slate-700 rounded-2xl text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-blue-500 transition-all">
+                            <input type="password" id="log-pass" placeholder="Contraseña" required class="w-full p-4 bg-slate-900 border border-slate-700 rounded-2xl text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-blue-500 transition-all">
+                            <button type="submit" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold hover:bg-blue-500 transition-colors">ENTRAR</button>
                         </form>
                     </div>
                 </div>`;
@@ -209,23 +225,17 @@
                 btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verificando...';
                 
                 try {
-                    // Firebase revisa si la contraseña encriptada es correcta
                     const cred = await signInWithEmailAndPassword(auth, document.getElementById('log-email').value, document.getElementById('log-pass').value);
-                    
-                    // Comprobamos que el usuario esté entrando al portal correcto
                     const userDoc = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'usuarios_sistema', cred.user.uid));
-                    if(userDoc.exists()) {
-                        if(userDoc.data().tipo !== type && userDoc.data().tipo !== 'admin') {
-                            alert("Esta cuenta pertenece a otro portal.");
-                            await signOut(auth);
-                            btn.innerHTML = 'ENTRAR';
-                            return;
-                        }
+                    if(userDoc.exists() && userDoc.data().tipo !== type && userDoc.data().tipo !== 'admin') {
+                        showToast("Esta cuenta pertenece a otro portal.", "error");
+                        await signOut(auth);
+                        btn.innerHTML = 'ENTRAR';
+                        return;
                     }
-                    // Si todo está bien, recargamos. La función init() detectará la sesión y abrirá el panel.
                     location.reload();
                 } catch(error) {
-                    alert("Correo o contraseña incorrectos.");
+                    showToast("Correo o contraseña incorrectos.", "error");
                     btn.innerHTML = 'ENTRAR';
                 }
             };
@@ -235,14 +245,14 @@
         window.renderRegister = (type) => {
             document.getElementById('app-container').innerHTML = `
                 <div class="max-w-md mx-auto py-10 animate-fade-in">
-                    <button onclick="renderAuthOption('${type}')" class="mb-6 text-slate-400 hover:text-indigo-600 flex items-center gap-2"><i class="fas fa-arrow-left"></i> Atrás</button>
-                    <div class="bg-white p-8 rounded-3xl shadow-2xl border">
-                        <h2 class="text-xl font-bold mb-6 text-center uppercase">Registro ${type}</h2>
+                    <button onclick="renderAuthOption('${type}')" class="mb-6 text-slate-400 hover:text-blue-400 flex items-center gap-2"><i class="fas fa-arrow-left"></i> Atrás</button>
+                    <div class="bg-slate-800 p-8 rounded-3xl shadow-2xl border border-slate-700">
+                        <h2 class="text-xl font-bold mb-6 text-center uppercase text-white">Registro ${type}</h2>
                         <form id="reg-form" class="space-y-4">
-                            <input type="text" id="reg-name" placeholder="${type === 'empresa' ? 'Nombre de la Empresa' : 'Nombre Completo'}" required class="w-full p-4 bg-slate-50 border rounded-2xl">
-                            <input type="email" id="reg-email" placeholder="Email" required class="w-full p-4 bg-slate-50 border rounded-2xl">
-                            <input type="password" id="reg-pass" placeholder="Contraseña segura" required class="w-full p-4 bg-slate-50 border rounded-2xl" minlength="6">
-                            <button type="submit" class="w-full bg-indigo-600 text-white py-4 rounded-2xl font-bold">CREAR CUENTA</button>
+                            <input type="text" id="reg-name" placeholder="${type === 'empresa' ? 'Nombre de la Empresa' : 'Nombre Completo'}" required class="w-full p-4 bg-slate-900 border border-slate-700 rounded-2xl text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-blue-500">
+                            <input type="email" id="reg-email" placeholder="Email" required class="w-full p-4 bg-slate-900 border border-slate-700 rounded-2xl text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-blue-500">
+                            <input type="password" id="reg-pass" placeholder="Contraseña segura" required class="w-full p-4 bg-slate-900 border border-slate-700 rounded-2xl text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-blue-500" minlength="6">
+                            <button type="submit" class="w-full bg-slate-700 text-white py-4 rounded-2xl font-bold hover:bg-slate-600 transition-colors border border-slate-600">CREAR CUENTA</button>
                         </form>
                     </div>
                 </div>`;
@@ -253,10 +263,7 @@
                 btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creando...';
                 
                 try {
-                    // 1. Creamos el usuario encriptado en el sistema de Firebase Auth
                     const cred = await createUserWithEmailAndPassword(auth, document.getElementById('reg-email').value, document.getElementById('reg-pass').value);
-                    
-                    // 2. Guardamos su información pública usando su ID único de Auth
                     await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'usuarios_sistema', cred.user.uid), {
                         nombre: document.getElementById('reg-name').value,
                         email: document.getElementById('reg-email').value,
@@ -265,11 +272,10 @@
                         timestamp: serverTimestamp()
                     });
                     
-                    alert("¡Cuenta segura creada con éxito!");
-                    // Recargamos para que init() lo mande directo a su dashboard sin pedirle login de nuevo
-                    location.reload(); 
+                    showToast("¡Cuenta segura creada con éxito!", "success");
+                    setTimeout(() => location.reload(), 1500);
                 } catch(error) {
-                    alert("Error: " + error.message);
+                    showToast("Error: " + error.message, "error");
                     btn.innerHTML = 'CREAR CUENTA';
                 }
             };
@@ -283,16 +289,16 @@
             if (!isPremium) {
                 container.innerHTML = `
                     <div class="max-w-5xl mx-auto py-12 animate-fade-in text-center">
-                        <div class="bg-white p-12 rounded-3xl border mb-8 shadow-sm">
-                            <div class="w-20 h-20 bg-amber-50 text-amber-500 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <div class="bg-slate-800 p-12 rounded-3xl border border-slate-700 mb-8 shadow-sm">
+                            <div class="w-20 h-20 bg-amber-500/10 text-amber-500 rounded-full flex items-center justify-center mx-auto mb-6">
                                 <i class="fas fa-lock text-3xl"></i>
                             </div>
-                            <h2 class="text-3xl font-black mb-4 text-slate-800">Buscador Global Bloqueado</h2>
-                            <p class="text-slate-500 mb-8 max-w-lg mx-auto text-lg">
+                            <h2 class="text-3xl font-black mb-4 text-white">Buscador Global Bloqueado</h2>
+                            <p class="text-slate-400 mb-8 max-w-lg mx-auto text-lg">
                                 Tu cuenta actual <b>(Gratis)</b> solo te permite ver los currículums cuando escaneas directamente el código QR de un candidato.
                             </p>
-                            <button onclick="renderPaywall('empresa')" class="bg-amber-400 text-amber-900 px-8 py-4 rounded-2xl font-black shadow-lg hover:bg-amber-300 transition-colors uppercase tracking-widest inline-flex items-center gap-2">
-                                <i class="fas fa-crown"></i> Desbloquear Premium por $19.99/mes
+                            <button onclick="renderPaywall('empresa')" class="bg-amber-500 text-slate-900 px-8 py-4 rounded-2xl font-black shadow-lg hover:bg-amber-400 transition-colors uppercase tracking-widest inline-flex items-center gap-2">
+                                <i class="fas fa-crown"></i> Desbloquear Premium
                             </button>
                         </div>
                     </div>`;
@@ -301,30 +307,30 @@
 
             container.innerHTML = `
                 <div class="max-w-6xl mx-auto py-8 animate-fade-in">
-                    <div class="bg-white p-8 rounded-3xl border mb-8 flex flex-col md:flex-row justify-between items-center gap-6 shadow-sm">
+                    <div class="bg-slate-800 p-8 rounded-3xl border border-slate-700 mb-8 flex flex-col md:flex-row justify-between items-center gap-6 shadow-lg">
                         <div>
-                            <h2 class="text-3xl font-black flex items-center gap-3 text-slate-800">
-                                <i class="fas fa-crown text-amber-400"></i> Portal Premium
+                            <h2 class="text-3xl font-black flex items-center gap-3 text-white">
+                                <i class="fas fa-crown text-amber-500"></i> Portal Premium
                             </h2>
-                            <p class="text-slate-500 mt-1">Bienvenido, ${user.nombre}. Busca y guarda el mejor talento.</p>
+                            <p class="text-slate-400 mt-1">Bienvenido, ${user.nombre}. Busca y guarda el mejor talento.</p>
                         </div>
                         <div class="w-full md:w-1/2 relative">
-                            <i class="fas fa-search absolute left-4 top-4 text-slate-400"></i>
+                            <i class="fas fa-search absolute left-4 top-4 text-slate-500"></i>
                             <input type="text" id="buscador-talento" placeholder="Buscar por profesión, nombre o habilidad..." 
-                                class="w-full pl-11 p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all" 
+                                class="w-full pl-11 p-3 bg-slate-900 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:ring-2 focus:ring-blue-500 outline-none transition-all" 
                                 oninput="filtrarTalento(this.value)">
                         </div>
                     </div>
 
-                    <div class="mb-6 flex gap-3 border-b pb-4">
-                        <button onclick="mostrarTodos()" class="text-sm font-bold text-indigo-600 bg-indigo-50 px-5 py-2.5 rounded-xl hover:bg-indigo-100 transition-colors">Todos los Candidatos</button>
-                        <button onclick="mostrarFavoritos()" class="text-sm font-bold text-pink-600 bg-pink-50 px-5 py-2.5 rounded-xl hover:bg-pink-100 transition-colors flex items-center gap-2">
+                    <div class="mb-6 flex gap-3 border-b border-slate-800 pb-4">
+                        <button onclick="mostrarTodos()" class="text-sm font-bold text-blue-400 bg-blue-900/30 border border-blue-900/50 px-5 py-2.5 rounded-xl hover:bg-blue-900/50 transition-colors">Todos los Candidatos</button>
+                        <button onclick="mostrarFavoritos()" class="text-sm font-bold text-pink-400 bg-pink-900/20 border border-pink-900/30 px-5 py-2.5 rounded-xl hover:bg-pink-900/40 transition-colors flex items-center gap-2">
                             <i class="fas fa-heart"></i> Mis Favoritos
                         </button>
                     </div>
 
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6" id="cv-grid">
-                        <div class="col-span-full text-center py-10 text-slate-400"><i class="fas fa-spinner fa-spin text-3xl mb-3"></i><p>Cargando talentos...</p></div>
+                        <div class="col-span-full text-center py-10 text-slate-500"><i class="fas fa-spinner fa-spin text-3xl mb-3"></i><p>Cargando talentos...</p></div>
                     </div>
                 </div>`;
 
@@ -341,31 +347,31 @@
             grid.innerHTML = '';
             
             if (cvList.length === 0) {
-                grid.innerHTML = '<p class="text-slate-400 col-span-full text-center py-10 bg-slate-50 rounded-2xl border border-dashed">No se encontraron candidatos.</p>';
+                grid.innerHTML = '<p class="text-slate-500 col-span-full text-center py-10 bg-slate-800 rounded-2xl border border-dashed border-slate-700">No se encontraron candidatos.</p>';
                 return;
             }
 
             cvList.forEach(cv => {
                 const esFavorito = currentUser.favoritos && currentUser.favoritos.includes(cv.id);
-                const corazon = esFavorito ? 'fas text-pink-500' : 'far text-slate-300 hover:text-pink-400';
+                const corazon = esFavorito ? 'fas text-pink-500' : 'far text-slate-600 hover:text-pink-400';
 
                 grid.innerHTML += `
-                    <div class="bg-white p-6 rounded-3xl border hover:shadow-xl transition-all relative group flex flex-col h-full">
-                        <button onclick="toggleFavorito('${cv.id}')" class="absolute top-4 right-4 text-xl z-10 p-2 bg-white/80 rounded-full backdrop-blur-sm shadow-sm transition-transform hover:scale-110">
+                    <div class="bg-slate-800 p-6 rounded-3xl border border-slate-700 hover:shadow-2xl hover:shadow-blue-900/20 transition-all relative group flex flex-col h-full hover:border-blue-500">
+                        <button onclick="toggleFavorito('${cv.id}')" class="absolute top-4 right-4 text-xl z-10 p-2 bg-slate-900/80 rounded-full backdrop-blur-sm shadow-sm transition-transform hover:scale-110 border border-slate-700">
                             <i class="fa-heart ${corazon}" id="fav-icon-${cv.id}"></i>
                         </button>
                         
-                        <div class="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mb-4 overflow-hidden border-2 border-transparent group-hover:border-indigo-100 transition-colors flex-shrink-0">
+                        <div class="w-16 h-16 bg-slate-900 text-blue-500 border border-slate-700 rounded-2xl flex items-center justify-center mb-4 overflow-hidden group-hover:border-blue-500 transition-colors flex-shrink-0">
                             ${cv.foto ? `<img src="${cv.foto}" class="w-full h-full object-cover">` : `<i class="fas fa-user-tie text-2xl"></i>`}
                         </div>
                         
                         <div class="flex-1">
-                            <h3 class="font-bold text-lg text-slate-800 leading-tight">${cv.nombre}</h3>
-                            <p class="text-indigo-600 text-xs font-black mb-2 uppercase tracking-wide mt-1">${cv.profesion || 'Candidato'}</p>
-                            <p class="text-[11px] text-slate-500 line-clamp-3 mb-4 leading-relaxed">${cv.objetivo || 'Sin descripción de perfil.'}</p>
+                            <h3 class="font-bold text-lg text-white leading-tight">${cv.nombre}</h3>
+                            <p class="text-blue-400 text-xs font-black mb-2 uppercase tracking-wide mt-1">${cv.profesion || 'Candidato'}</p>
+                            <p class="text-[11px] text-slate-400 line-clamp-3 mb-4 leading-relaxed">${cv.objetivo || 'Sin descripción de perfil.'}</p>
                         </div>
                         
-                        <button onclick="loadCV('${cv.id}')" class="w-full py-3 bg-slate-900 text-white rounded-xl text-xs font-black hover:bg-indigo-600 transition-colors mt-auto">VER PERFIL</button>
+                        <button onclick="loadCV('${cv.id}')" class="w-full py-3 bg-blue-600 text-white rounded-xl text-xs font-black hover:bg-blue-500 transition-colors mt-auto shadow-lg shadow-blue-900/20">VER PERFIL</button>
                     </div>`;
             });
         };
@@ -397,10 +403,12 @@
             
             if(index > -1) {
                 currentUser.favoritos.splice(index, 1); 
-                document.getElementById('fav-icon-'+cvId).className = 'fa-heart far text-slate-300 hover:text-pink-400';
+                document.getElementById('fav-icon-'+cvId).className = 'fa-heart far text-slate-600 hover:text-pink-400';
+                showToast("Eliminado de favoritos", "info");
             } else {
                 currentUser.favoritos.push(cvId); 
                 document.getElementById('fav-icon-'+cvId).className = 'fa-heart fas text-pink-500';
+                showToast("Guardado en favoritos", "success");
             }
 
             try {
@@ -427,61 +435,61 @@
             const container = document.getElementById('app-container');
             container.innerHTML = `
                 <div class="max-w-5xl mx-auto py-8 animate-fade-in">
-                    <div class="bg-white p-8 rounded-3xl border mb-10 flex flex-col md:flex-row justify-between items-center gap-6">
+                    <div class="bg-slate-800 p-8 rounded-3xl border border-slate-700 mb-10 flex flex-col md:flex-row justify-between items-center gap-6 shadow-lg">
                         <div>
-                            <h2 class="text-3xl font-black text-slate-800">Panel de Control ${isFullAccess ? '<span class="text-red-500 text-sm ml-2">(Modo Admin)</span>' : ''}</h2>
+                            <h2 class="text-3xl font-black text-white">Panel de Control ${isFullAccess ? '<span class="text-red-500 text-sm ml-2">(Modo Admin)</span>' : ''}</h2>
                             <p class="text-slate-400">Editando perfil de: ${targetUser.email}</p>
                         </div>
                         <div class="flex gap-4 flex-wrap">
-                            ${isFullAccess ? `<button onclick="renderAdminPanel()" class="bg-slate-200 text-slate-800 px-6 py-3 rounded-2xl font-bold border">Volver a Consola</button>` : ''}
+                            ${isFullAccess ? `<button onclick="renderAdminPanel()" class="bg-slate-700 text-white px-6 py-3 rounded-2xl font-bold border border-slate-600 hover:bg-slate-600">Volver a Consola</button>` : ''}
                             ${cv ? `
-                                <button onclick="showVisitas('${cv.id}')" class="bg-amber-50 text-amber-600 px-6 py-3 rounded-2xl font-bold border border-amber-200 hover:bg-amber-100 flex items-center gap-2 transition-colors shadow-sm">
+                                <button onclick="showVisitas('${cv.id}')" class="bg-blue-900/30 text-blue-400 px-6 py-3 rounded-2xl font-bold border border-blue-800 hover:bg-blue-900/50 flex items-center gap-2 transition-colors shadow-sm">
                                     <i class="fas fa-chart-line"></i> ${totalVisitas} VISTAS
                                 </button>
                                 
-                                <button onclick="showQR('${cv.id}')" class="bg-slate-900 text-white px-6 py-3 rounded-2xl font-bold flex items-center gap-2"><i class="fas fa-qrcode"></i> MI QR</button>
-                                <button onclick="loadCV('${cv.id}')" class="bg-indigo-50 text-indigo-600 px-6 py-3 rounded-2xl font-bold border border-indigo-100 flex items-center gap-2"><i class="fas fa-eye"></i> VISTA PREVIA</button>
+                                <button onclick="showQR('${cv.id}')" class="bg-blue-600 text-white px-6 py-3 rounded-2xl font-bold flex items-center gap-2 hover:bg-blue-500 transition-colors"><i class="fas fa-qrcode"></i> MI QR</button>
+                                <button onclick="loadCV('${cv.id}')" class="bg-slate-900 text-white px-6 py-3 rounded-2xl font-bold border border-slate-700 hover:border-slate-500 flex items-center gap-2 transition-colors"><i class="fas fa-eye"></i> VISTA PREVIA</button>
                             ` : ''}
                         </div>
                     </div>
 
                     <form id="cv-full-form" class="space-y-10">
-                        <div class="bg-white p-8 rounded-3xl border shadow-sm">
-                            <h3 class="font-black text-indigo-600 mb-6 text-xs uppercase border-b pb-2"><i class="fas fa-user"></i> 1. Información General</h3>
+                        <div class="bg-slate-800 p-8 rounded-3xl border border-slate-700 shadow-sm">
+                            <h3 class="font-black text-blue-400 mb-6 text-xs uppercase border-b border-slate-700 pb-2"><i class="fas fa-user"></i> 1. Información General</h3>
                             
-                            <div class="flex items-center gap-6 mb-6 bg-slate-50 p-4 rounded-2xl border border-dashed border-slate-300">
-                                <img id="cv-foto-preview" src="${cv?.foto || 'https://via.placeholder.com/150'}" class="w-24 h-24 rounded-full object-cover border-4 border-white shadow-md">
+                            <div class="flex items-center gap-6 mb-6 bg-slate-900 p-4 rounded-2xl border border-dashed border-slate-700">
+                                <img id="cv-foto-preview" src="${cv?.foto || 'https://via.placeholder.com/150'}" class="w-24 h-24 rounded-full object-cover border-4 border-slate-800 shadow-md">
                                 <div class="flex-1">
-                                    <label class="block text-xs font-bold text-slate-500 mb-1">URL de Foto de Perfil</label>
-                                    <input type="url" id="cv-foto" value="${cv?.foto || ''}" placeholder="Ej: https://ejemplo.com/mifoto.jpg" class="w-full p-3 bg-white border rounded-xl text-sm" oninput="document.getElementById('cv-foto-preview').src = this.value || 'https://via.placeholder.com/150'">
+                                    <label class="block text-xs font-bold text-slate-400 mb-1">URL de Foto de Perfil</label>
+                                    <input type="url" id="cv-foto" value="${cv?.foto || ''}" placeholder="Ej: https://ejemplo.com/mifoto.jpg" class="w-full p-3 bg-slate-800 border border-slate-700 rounded-xl text-sm text-white outline-none focus:border-blue-500" oninput="document.getElementById('cv-foto-preview').src = this.value || 'https://via.placeholder.com/150'">
                                 </div>
                             </div>
 
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                                <input type="text" id="cv-nombre" value="${cv?.nombre || targetUser.nombre}" placeholder="Nombre Completo" class="w-full p-4 bg-slate-50 border rounded-2xl">
-                                <input type="text" id="cv-prof" value="${cv?.profesion || ''}" placeholder="Profesión / Título" class="w-full p-4 bg-slate-50 border rounded-2xl">
-                                <input type="text" id="cv-dir" value="${cv?.direccion || ''}" placeholder="Dirección Residencial" class="w-full p-4 bg-slate-50 border rounded-2xl">
-                                <input type="text" id="cv-tel" value="${cv?.telefono || ''}" placeholder="Teléfono" class="w-full p-4 bg-slate-50 border rounded-2xl">
+                                <input type="text" id="cv-nombre" value="${cv?.nombre || targetUser.nombre}" placeholder="Nombre Completo" class="w-full p-4 bg-slate-900 border border-slate-700 rounded-2xl text-white outline-none focus:border-blue-500">
+                                <input type="text" id="cv-prof" value="${cv?.profesion || ''}" placeholder="Profesión / Título" class="w-full p-4 bg-slate-900 border border-slate-700 rounded-2xl text-white outline-none focus:border-blue-500">
+                                <input type="text" id="cv-dir" value="${cv?.direccion || ''}" placeholder="Dirección Residencial" class="w-full p-4 bg-slate-900 border border-slate-700 rounded-2xl text-white outline-none focus:border-blue-500">
+                                <input type="text" id="cv-tel" value="${cv?.telefono || ''}" placeholder="Teléfono" class="w-full p-4 bg-slate-900 border border-slate-700 rounded-2xl text-white outline-none focus:border-blue-500">
                             </div>
                             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <div class="relative"><i class="fab fa-linkedin absolute left-4 top-5 text-indigo-400"></i><input type="text" id="cv-lin" value="${cv?.redes?.linkedin || ''}" placeholder="LinkedIn URL" class="p-4 pl-10 bg-slate-50 border rounded-2xl w-full text-xs"></div>
-                                <div class="relative"><i class="fab fa-facebook absolute left-4 top-5 text-blue-500"></i><input type="text" id="cv-fb" value="${cv?.redes?.facebook || ''}" placeholder="Facebook URL" class="p-4 pl-10 bg-slate-50 border rounded-2xl w-full text-xs"></div>
-                                <div class="relative"><i class="fab fa-instagram absolute left-4 top-5 text-pink-500"></i><input type="text" id="cv-ig" value="${cv?.redes?.instagram || ''}" placeholder="Instagram URL" class="p-4 pl-10 bg-slate-50 border rounded-2xl w-full text-xs"></div>
+                                <div class="relative"><i class="fab fa-linkedin absolute left-4 top-5 text-blue-500"></i><input type="text" id="cv-lin" value="${cv?.redes?.linkedin || ''}" placeholder="LinkedIn URL" class="p-4 pl-10 bg-slate-900 border border-slate-700 rounded-2xl w-full text-xs text-white outline-none focus:border-blue-500"></div>
+                                <div class="relative"><i class="fab fa-facebook absolute left-4 top-5 text-blue-400"></i><input type="text" id="cv-fb" value="${cv?.redes?.facebook || ''}" placeholder="Facebook URL" class="p-4 pl-10 bg-slate-900 border border-slate-700 rounded-2xl w-full text-xs text-white outline-none focus:border-blue-500"></div>
+                                <div class="relative"><i class="fab fa-instagram absolute left-4 top-5 text-pink-500"></i><input type="text" id="cv-ig" value="${cv?.redes?.instagram || ''}" placeholder="Instagram URL" class="p-4 pl-10 bg-slate-900 border border-slate-700 rounded-2xl w-full text-xs text-white outline-none focus:border-blue-500"></div>
                             </div>
                         </div>
 
                         <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                            <div class="bg-white p-8 rounded-3xl border">
-                                <h3 class="font-black text-indigo-600 mb-4 text-xs uppercase">2. Objetivo Profesional</h3>
-                                <textarea id="cv-obj" rows="5" class="w-full p-4 bg-slate-50 border rounded-2xl">${cv?.objetivo || ''}</textarea>
+                            <div class="bg-slate-800 p-8 rounded-3xl border border-slate-700">
+                                <h3 class="font-black text-blue-400 mb-4 text-xs uppercase">2. Objetivo Profesional</h3>
+                                <textarea id="cv-obj" rows="5" class="w-full p-4 bg-slate-900 border border-slate-700 rounded-2xl text-white outline-none focus:border-blue-500">${cv?.objetivo || ''}</textarea>
                             </div>
-                            <div class="bg-white p-8 rounded-3xl border">
-                                <h3 class="font-black text-indigo-600 mb-4 text-xs uppercase">3. Información Personal</h3>
+                            <div class="bg-slate-800 p-8 rounded-3xl border border-slate-700">
+                                <h3 class="font-black text-blue-400 mb-4 text-xs uppercase">3. Información Personal</h3>
                                 <div class="grid grid-cols-2 gap-4">
-                                    <input type="text" id="cv-ced" value="${cv?.info_personal?.cedula || ''}" placeholder="Cédula" class="p-4 bg-slate-50 border rounded-2xl text-sm">
-                                    <input type="text" id="cv-civil" value="${cv?.info_personal?.estado_civil || ''}" placeholder="Estado Civil" class="p-4 bg-slate-50 border rounded-2xl text-sm">
-                                    <input type="text" id="cv-nac" value="${cv?.info_personal?.nacionalidad || ''}" placeholder="Nacionalidad" class="p-4 bg-slate-50 border rounded-2xl text-sm">
-                                    <input type="text" id="cv-birth" value="${cv?.info_personal?.nacimiento || ''}" placeholder="F. Nacimiento" class="p-4 bg-slate-50 border rounded-2xl text-sm">
+                                    <input type="text" id="cv-ced" value="${cv?.info_personal?.cedula || ''}" placeholder="Cédula" class="p-4 bg-slate-900 border border-slate-700 rounded-2xl text-sm text-white outline-none focus:border-blue-500">
+                                    <input type="text" id="cv-civil" value="${cv?.info_personal?.estado_civil || ''}" placeholder="Estado Civil" class="p-4 bg-slate-900 border border-slate-700 rounded-2xl text-sm text-white outline-none focus:border-blue-500">
+                                    <input type="text" id="cv-nac" value="${cv?.info_personal?.nacionalidad || ''}" placeholder="Nacionalidad" class="p-4 bg-slate-900 border border-slate-700 rounded-2xl text-sm text-white outline-none focus:border-blue-500">
+                                    <input type="text" id="cv-birth" value="${cv?.info_personal?.nacimiento || ''}" placeholder="F. Nacimiento" class="p-4 bg-slate-900 border border-slate-700 rounded-2xl text-sm text-white outline-none focus:border-blue-500">
                                 </div>
                             </div>
                         </div>
@@ -495,20 +503,20 @@
                                 ${renderEditorSection("Referencias Laborales", "ref", cv?.referencias, ["Nombre", "Empresa", "Cargo", "Teléfono"], false)}
                             </div>
 
-                            <div class="bg-white p-8 rounded-3xl border shadow-sm mt-8">
-                                <h3 class="font-black text-indigo-600 mb-6 text-xs uppercase border-b pb-2">Habilidades, Idiomas e Intereses</h3>
+                            <div class="bg-slate-800 p-8 rounded-3xl border border-slate-700 shadow-sm mt-8">
+                                <h3 class="font-black text-blue-400 mb-6 text-xs uppercase border-b border-slate-700 pb-2">Habilidades, Idiomas e Intereses</h3>
                                 
                                 <div class="mb-8">
                                     <div class="flex justify-between items-center mb-4">
-                                        <label class="text-[10px] font-black text-slate-400">LISTA DE HABILIDADES</label>
-                                        <button type="button" id="btn-add-hab" class="text-[10px] bg-slate-900 text-white px-3 py-1.5 rounded-full hover:bg-indigo-600 transition-colors shadow-sm">+ Añadir Habilidad</button>
+                                        <label class="text-[10px] font-black text-slate-500">LISTA DE HABILIDADES</label>
+                                        <button type="button" id="btn-add-hab" class="text-[10px] bg-slate-700 text-white border border-slate-600 px-3 py-1.5 rounded-full hover:bg-blue-600 transition-colors shadow-sm">+ Añadir Habilidad</button>
                                     </div>
                                     <div id="hab-container" class="space-y-3">
                                         ${cv?.habilidades_lista?.map(h => `
-                                            <div class="grid grid-cols-1 md:grid-cols-2 gap-2 p-4 bg-slate-50 rounded-2xl border relative animate-fade-in">
-                                                <input type="text" placeholder="Habilidad (Ej: Liderazgo)" value="${h.nombre}" class="p-2 border rounded-lg text-sm hab-nom outline-none focus:border-indigo-400">
-                                                <input type="text" placeholder="Descripción breve" value="${h.desc}" class="p-2 border rounded-lg text-sm hab-des outline-none focus:border-indigo-400">
-                                                <button type="button" onclick="this.parentElement.remove()" class="absolute -top-2 -right-2 bg-red-500 text-white w-6 h-6 rounded-full text-xs shadow">×</button>
+                                            <div class="grid grid-cols-1 md:grid-cols-2 gap-2 p-4 bg-slate-900 rounded-2xl border border-slate-700 relative animate-fade-in">
+                                                <input type="text" placeholder="Habilidad (Ej: Liderazgo)" value="${h.nombre}" class="p-2 border border-slate-700 bg-slate-800 rounded-lg text-sm text-white hab-nom outline-none focus:border-blue-500">
+                                                <input type="text" placeholder="Descripción breve" value="${h.desc}" class="p-2 border border-slate-700 bg-slate-800 rounded-lg text-sm text-white hab-des outline-none focus:border-blue-500">
+                                                <button type="button" onclick="this.parentElement.remove()" class="absolute -top-2 -right-2 bg-red-600 text-white w-6 h-6 rounded-full text-xs shadow">×</button>
                                             </div>
                                         `).join('') || ''}
                                     </div>
@@ -516,47 +524,47 @@
 
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div class="space-y-2">
-                                        <label class="text-[10px] font-black text-slate-400">IDIOMAS</label>
-                                        <input type="text" id="cv-idi" value="${cv?.idiomas || ''}" placeholder="Ej: Inglés (Avanzado), Español (Nativo)" class="p-4 bg-slate-50 border rounded-2xl w-full text-sm">
+                                        <label class="text-[10px] font-black text-slate-500">IDIOMAS</label>
+                                        <input type="text" id="cv-idi" value="${cv?.idiomas || ''}" placeholder="Ej: Inglés (Avanzado), Español (Nativo)" class="p-4 bg-slate-900 border border-slate-700 rounded-2xl w-full text-sm text-white outline-none focus:border-blue-500">
                                     </div>
                                     <div class="space-y-2">
-                                        <label class="text-[10px] font-black text-slate-400">INTERESES</label>
-                                        <input type="text" id="cv-int" value="${cv?.intereses || ''}" placeholder="Ej: Tecnología, Diseño, Lectura" class="p-4 bg-slate-50 border rounded-2xl w-full text-sm">
+                                        <label class="text-[10px] font-black text-slate-500">INTERESES</label>
+                                        <input type="text" id="cv-int" value="${cv?.intereses || ''}" placeholder="Ej: Tecnología, Diseño, Lectura" class="p-4 bg-slate-900 border border-slate-700 rounded-2xl w-full text-sm text-white outline-none focus:border-blue-500">
                                     </div>
                                 </div>
                             </div>
                         ` : `
-                            <div class="bg-indigo-50 border border-indigo-200 p-8 rounded-3xl flex flex-col items-start gap-4 shadow-sm">
+                            <div class="bg-blue-900/10 border border-blue-900/50 p-8 rounded-3xl flex flex-col items-start gap-4 shadow-sm">
                                 <div class="flex gap-4 items-start w-full">
-                                    <div class="bg-indigo-600 text-white w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0">
+                                    <div class="bg-blue-600 text-white w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0">
                                         <i class="fas fa-lock"></i>
                                     </div>
                                     <div class="w-full">
-                                        <h3 class="font-black text-indigo-900 mb-2">Secciones Protegidas</h3>
-                                        <p class="text-sm text-indigo-800 leading-relaxed mb-4">
+                                        <h3 class="font-black text-blue-400 mb-2">Secciones Protegidas</h3>
+                                        <p class="text-sm text-slate-300 leading-relaxed mb-4">
                                             Tu Experiencia Laboral, Educación, Cursos y Certificaciones son validadas por la plataforma y solo pueden ser modificadas por el administrador.
                                         </p>
-                                        <button type="button" onclick="document.getElementById('solicitud-box').classList.toggle('hidden')" class="bg-indigo-600 text-white px-5 py-2.5 rounded-xl text-xs font-bold hover:bg-indigo-700 transition-colors shadow-md">
+                                        <button type="button" onclick="document.getElementById('solicitud-box').classList.toggle('hidden')" class="bg-blue-600 text-white px-5 py-2.5 rounded-xl text-xs font-bold hover:bg-blue-500 transition-colors shadow-md">
                                             <i class="fas fa-paper-plane mr-1"></i> Enviar Solicitud de Actualización
                                         </button>
                                     </div>
                                 </div>
                                 
-                                <div id="solicitud-box" class="hidden w-full mt-4 bg-white p-6 rounded-2xl border border-indigo-100 shadow-inner">
-                                    <label class="block text-xs font-bold text-slate-600 mb-2">Detalles de la modificación:</label>
-                                    <textarea id="sol-texto" rows="4" class="w-full p-4 bg-slate-50 border rounded-xl mb-4 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Ej: Por favor añadir a mi experiencia... o añadir la Habilidad: Trabajo en Equipo"></textarea>
+                                <div id="solicitud-box" class="hidden w-full mt-4 bg-slate-900 p-6 rounded-2xl border border-slate-700 shadow-inner">
+                                    <label class="block text-xs font-bold text-slate-400 mb-2">Detalles de la modificación:</label>
+                                    <textarea id="sol-texto" rows="4" class="w-full p-4 bg-slate-800 border border-slate-700 rounded-xl mb-4 text-sm text-white outline-none focus:ring-2 focus:ring-blue-500" placeholder="Ej: Por favor añadir a mi experiencia... o añadir la Habilidad: Trabajo en Equipo"></textarea>
                                     
-                                    <label class="block text-xs font-bold text-slate-600 mb-2">URL del Certificado (Opcional):</label>
-                                    <input type="url" id="sol-url" class="w-full p-4 bg-slate-50 border rounded-xl mb-6 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Enlace a tu certificado, Drive, etc.">
+                                    <label class="block text-xs font-bold text-slate-400 mb-2">URL del Certificado (Opcional):</label>
+                                    <input type="url" id="sol-url" class="w-full p-4 bg-slate-800 border border-slate-700 rounded-xl mb-6 text-sm text-white outline-none focus:ring-2 focus:ring-blue-500" placeholder="Enlace a tu certificado, Drive, etc.">
                                     
-                                    <button type="button" onclick="enviarSolicitud('${targetUser.email}', '${targetUser.nombre}')" class="bg-emerald-500 text-white px-6 py-3 rounded-xl text-sm font-bold hover:bg-emerald-600 transition-colors w-full shadow-lg shadow-emerald-200">
+                                    <button type="button" onclick="enviarSolicitud('${targetUser.email}', '${targetUser.nombre}')" class="bg-slate-700 border border-slate-600 text-white px-6 py-3 rounded-xl text-sm font-bold hover:bg-slate-600 transition-colors w-full shadow-lg">
                                         Enviar a Revisión
                                     </button>
                                 </div>
                             </div>
                         `}
 
-                        <button id="btn-submit" type="submit" class="w-full ${isFullAccess ? 'bg-red-600 shadow-red-200 hover:bg-red-800' : 'bg-indigo-600 shadow-indigo-200 hover:bg-slate-900'} text-white py-6 rounded-3xl font-black text-xl shadow-2xl transition-all uppercase tracking-widest">
+                        <button id="btn-submit" type="submit" class="w-full ${isFullAccess ? 'bg-red-600 shadow-red-900/50 hover:bg-red-500' : 'bg-blue-600 shadow-blue-900/50 hover:bg-blue-500'} text-white py-6 rounded-3xl font-black text-xl shadow-2xl transition-all uppercase tracking-widest">
                             ${isFullAccess ? 'Guardar Cambios como Admin' : 'Actualizar Mi Perfil Básico'}
                         </button>
                     </form>
@@ -565,17 +573,16 @@
             if (isFullAccess) {
                 setupDynamicButtons();
                 
-                // Lógica del botón de añadir nueva Habilidad
                 const btnAddHab = document.getElementById('btn-add-hab');
                 if(btnAddHab) {
                     btnAddHab.onclick = () => {
                         const container = document.getElementById('hab-container');
                         const div = document.createElement('div');
-                        div.className = "grid grid-cols-1 md:grid-cols-2 gap-2 p-4 bg-slate-50 rounded-2xl border relative animate-fade-in";
+                        div.className = "grid grid-cols-1 md:grid-cols-2 gap-2 p-4 bg-slate-900 rounded-2xl border border-slate-700 relative animate-fade-in";
                         div.innerHTML = `
-                            <input type="text" placeholder="Habilidad (Ej: Liderazgo)" class="p-2 border rounded-lg text-sm hab-nom outline-none focus:border-indigo-400">
-                            <input type="text" placeholder="Descripción breve" class="p-2 border rounded-lg text-sm hab-des outline-none focus:border-indigo-400">
-                            <button type="button" onclick="this.parentElement.remove()" class="absolute -top-2 -right-2 bg-red-500 text-white w-6 h-6 rounded-full text-xs shadow">×</button>
+                            <input type="text" placeholder="Habilidad (Ej: Liderazgo)" class="p-2 border border-slate-700 bg-slate-800 rounded-lg text-sm text-white hab-nom outline-none focus:border-blue-500">
+                            <input type="text" placeholder="Descripción breve" class="p-2 border border-slate-700 bg-slate-800 rounded-lg text-sm text-white hab-des outline-none focus:border-blue-500">
+                            <button type="button" onclick="this.parentElement.remove()" class="absolute -top-2 -right-2 bg-red-600 text-white w-6 h-6 rounded-full text-xs shadow">×</button>
                         `;
                         container.appendChild(div);
                     };
@@ -584,6 +591,10 @@
 
             document.getElementById('cv-full-form').onsubmit = async (e) => {
                 e.preventDefault();
+                const btn = document.getElementById('btn-submit');
+                const btnText = btn.innerText;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
+
                 try {
                     const payload = {
                         nombre: document.getElementById('cv-nombre').value,
@@ -628,7 +639,6 @@
                         payload.diplomados = getSectionData('dip', 2, true);
                         payload.referencias = getSectionData('ref', 4, false);
                         
-                        // Recolectar Habilidades
                         payload.habilidades_lista = Array.from(document.querySelectorAll('#hab-container > div')).map(row => ({
                             nombre: row.querySelector('.hab-nom').value,
                             desc: row.querySelector('.hab-des').value
@@ -637,7 +647,6 @@
                         payload.idiomas = document.getElementById('cv-idi').value;
                         payload.intereses = document.getElementById('cv-int').value;
                     } else {
-                        // Si no es admin, mantenemos intactos los arrays protegidos en la BD
                         payload.experiencia = cv?.experiencia || [];
                         payload.educacion = cv?.educacion || [];
                         payload.cursos = cv?.cursos || [];
@@ -651,162 +660,30 @@
                     if (cv) await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'cvs', cv.id), payload);
                     else await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'cvs'), payload);
                     
-                    alert("¡CV actualizado con éxito!");
+                    showToast("¡CV actualizado con éxito!", "success");
                     renderDashboard(targetUser, isFullAccess);
-                } catch (err) { alert("Error al guardar: " + err.message); }
+                } catch (err) { 
+                    showToast("Error al guardar: " + err.message, "error");
+                    btn.innerHTML = btnText;
+                }
             };
         }
 
-        window.enviarSolicitud = async (email, nombre) => {
-            const texto = document.getElementById('sol-texto').value;
-            const url = document.getElementById('sol-url').value;
-            if(!texto.trim()) return alert("Debes escribir los detalles."); 
-            
-            try {
-                await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'solicitudes'), {
-                    email: email,
-                    nombre: nombre,
-                    texto: texto,
-                    link: url,
-                    estado: 'pendiente',
-                    fecha: new Date().toLocaleDateString(),
-                    timestamp: serverTimestamp()
-                });
-                alert("¡Solicitud enviada con éxito! El administrador la revisará pronto.");
-                document.getElementById('solicitud-box').classList.add('hidden');
-            } catch(e) { alert("Error al enviar la solicitud."); }
-        };
-
-        // --- SISTEMA DE VISITAS Y PAYWALL ---
-        window.showVisitas = async (cvId) => {
-            if (currentUser && currentUser.tipo === 'usuario' && (!currentUser.plan || currentUser.plan === 'gratis')) {
-                renderPaywall('usuario');
-                return; 
-            }
-
-            const visitasSnap = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'visitas'));
-            let misVisitas = [];
-            visitasSnap.forEach(d => {
-                const v = d.data();
-                if (v.cv_id === cvId) misVisitas.push(v);
-            });
-            misVisitas.reverse();
-
-            const modal = document.createElement('div');
-            modal.className = "fixed inset-0 bg-slate-900/90 flex items-center justify-center z-[100] p-4 backdrop-blur-sm animate-fade-in";
-            
-            let listHTML = misVisitas.length === 0 ? '<p class="text-slate-500 py-10 text-center">Aún no hay visitas registradas.</p>' : 
-                misVisitas.map(v => `
-                    <div class="bg-slate-50 p-4 rounded-xl border mb-3 text-left hover:border-indigo-300 transition-colors">
-                        <p class="font-bold text-slate-800"><i class="fas fa-building text-indigo-500 mr-2"></i>${v.empresa_nombre || 'Empresa Anónima'}</p>
-                        <p class="text-[11px] text-slate-500 mt-1"><i class="fas fa-envelope mr-2"></i>${v.empresa_email || 'Sin correo'}</p>
-                        <p class="text-[10px] text-slate-400 mt-2 font-semibold"><i class="fas fa-clock mr-1"></i>${v.fecha || 'Fecha desconocida'}</p>
-                    </div>
-                `).join('');
-
-            modal.innerHTML = `
-                <div class="bg-white p-8 rounded-3xl text-center shadow-2xl max-w-md w-full border relative flex flex-col max-h-[85vh]">
-                    <button onclick="this.closest('.fixed').remove()" class="absolute top-4 right-4 text-slate-400 hover:text-red-500"><i class="fas fa-times text-xl"></i></button>
-                    <div class="w-16 h-16 bg-amber-100 text-amber-500 rounded-full flex items-center justify-center mx-auto mb-4"><i class="fas fa-chart-line text-2xl"></i></div>
-                    <h3 class="font-black text-2xl mb-1 text-slate-800">Visualizaciones</h3>
-                    <p class="text-sm text-slate-500 mb-6">Empresas que han escaneado tu perfil.</p>
-                    <div class="overflow-y-auto pr-2 flex-1">${listHTML}</div>
-                </div>`;
-            document.body.appendChild(modal);
-        };
-
-        window.renderPaywall = (type) => {
-            const container = document.getElementById('app-container');
-            const isEmpresa = type === 'empresa';
-            const tituloPro = isEmpresa ? 'Reclutador Premium' : 'Candidato PRO';
-            const precio = isEmpresa ? '$19.99' : '$4.99';
-            const botonVolver = isEmpresa ? "renderEmpresaDashboard(currentUser)" : "renderDashboard(currentUser)";
-
-            container.innerHTML = `
-                <div class="max-w-4xl mx-auto py-12 animate-fade-in text-center">
-                    <button onclick="${botonVolver}" class="mb-8 text-slate-400 hover:text-indigo-600 flex items-center gap-2 mx-auto"><i class="fas fa-arrow-left"></i> Volver a mi panel</button>
-                    <h2 class="text-4xl font-black mb-4 text-slate-800 tracking-tight">Lleva tu cuenta al <span class="text-indigo-600">Siguiente Nivel</span></h2>
-                    
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto text-left mt-10">
-                        <div class="bg-white p-8 rounded-3xl border-2 border-slate-100 opacity-70 flex flex-col">
-                            <h3 class="font-black text-slate-500 text-xl mb-1">Plan Básico</h3>
-                            <p class="text-4xl font-black text-slate-800 mb-8">Gratis</p>
-                            <button class="w-full bg-slate-100 text-slate-400 py-4 rounded-2xl font-bold cursor-not-allowed mt-auto">Tu plan actual</button>
-                        </div>
-                        <div class="bg-indigo-900 p-8 rounded-3xl border-4 border-indigo-400 shadow-2xl relative flex flex-col">
-                            <div class="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-amber-400 text-amber-900 text-[10px] font-black px-4 py-1.5 rounded-full uppercase tracking-widest shadow-md">Recomendado</div>
-                            <h3 class="font-black text-indigo-300 text-xl mb-1">${tituloPro}</h3>
-                            <p class="text-4xl font-black text-white mb-6">${precio}<span class="text-sm text-indigo-400 font-normal"> / mes</span></p>
-                            
-                            <div class="mt-auto bg-indigo-950 p-5 rounded-2xl border border-indigo-700">
-                                <p class="text-xs text-indigo-300 font-bold mb-3 uppercase tracking-wider">Instrucciones de Activación:</p>
-                                <ol class="text-xs text-indigo-100 space-y-3 mb-5 ml-4 list-decimal">
-                                    <li>Realiza el pago correspondiente a la cuenta BHD - <b>30912740013</b>.</li>
-                                    <li>Envía el comprobante por WhatsApp al <br><b><i class="fab fa-whatsapp text-green-400 mr-1 mt-1"></i> +1 829-913-5723</b></li>
-                                    <li>Haz clic en el botón de abajo para notificar al administrador.</li>
-                                </ol>
-                                <button onclick="solicitarUpgrade()" class="w-full bg-amber-400 text-amber-900 py-4 rounded-xl font-black shadow-[0_0_15px_rgba(251,191,36,0.3)] hover:bg-amber-300 transition-colors uppercase tracking-widest text-sm">
-                                    <i class="fas fa-check-circle mr-1"></i> Ya envié el comprobante
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>`;
-        };
-
-        window.solicitarUpgrade = async () => {
-            const btn = event.target.closest('button');
-            const originalText = btn.innerHTML;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Procesando...';
-            
-            try {
-                const reqRef = collection(db, 'artifacts', appId, 'public', 'data', 'solicitudes_plan');
-                const qSnap = await getDocs(reqRef);
-                let yaTienePendiente = false;
-                qSnap.forEach(doc => { if (doc.data().usuario_id === currentUser.id && doc.data().estado === 'pendiente') yaTienePendiente = true; });
-
-                const mensajeWa = encodeURIComponent(`Hola, soy ${currentUser.nombre} (${currentUser.email}). Acabo de solicitar el plan PRO en LORHELS CV y adjunto mi comprobante de pago:`);
-                const linkWhatsApp = `https://wa.me/18299135723?text=${mensajeWa}`;
-
-                if (yaTienePendiente) {
-                    alert("Ya tienes una solicitud en proceso. Abriremos WhatsApp por si olvidaste enviar la foto.");
-                    window.open(linkWhatsApp, '_blank');
-                    btn.innerHTML = originalText;
-                    return;
-                }
-
-                await addDoc(reqRef, {
-                    usuario_id: currentUser.id,
-                    nombre: currentUser.nombre,
-                    email: currentUser.email,
-                    tipo_usuario: currentUser.tipo,
-                    estado: 'pendiente',
-                    fecha: new Date().toLocaleDateString(),
-                    timestamp: serverTimestamp()
-                });
-                
-                alert("¡Solicitud registrada! Se abrirá WhatsApp para que envíes la foto.");
-                window.open(linkWhatsApp, '_blank');
-                if (currentUser.tipo === 'empresa') renderEmpresaDashboard(currentUser); else renderDashboard(currentUser);
-            } catch(e) { alert("Error: " + e.message); btn.innerHTML = originalText; }
-        };
-
-        // --- FUNCIONES DINÁMICAS (EDITOR Y CV) ---
         function renderEditorSection(title, id, data, placeholders, hasImage) {
             return `
-                <div class="bg-white p-8 rounded-3xl border shadow-sm">
+                <div class="bg-slate-800 p-8 rounded-3xl border border-slate-700 shadow-sm">
                     <div class="flex justify-between items-center mb-6">
-                        <h3 class="font-black text-indigo-600 text-xs uppercase">${title}</h3>
-                        <button type="button" data-section="${id}" data-fields='${JSON.stringify(placeholders)}' data-image="${hasImage}" class="btn-add-row text-xs bg-slate-900 text-white px-4 py-2 rounded-full hover:bg-indigo-600">
+                        <h3 class="font-black text-blue-400 text-xs uppercase">${title}</h3>
+                        <button type="button" data-section="${id}" data-fields='${JSON.stringify(placeholders)}' data-image="${hasImage}" class="btn-add-row text-xs bg-slate-700 border border-slate-600 text-white px-4 py-2 rounded-full hover:bg-blue-600 transition-colors">
                             + Añadir Item
                         </button>
                     </div>
                     <div id="${id}-container" class="space-y-4">
                         ${data?.map(item => `
-                            <div class="grid grid-cols-1 md:grid-cols-${placeholders.length} gap-2 p-4 bg-slate-50 rounded-2xl border relative">
-                                ${placeholders.map((p, i) => `<input type="text" placeholder="${p}" value="${item['f'+i] || ''}" class="p-2 border rounded-lg text-xs ${id}-field-${i}">`).join('')}
-                                ${hasImage ? `<div class="col-span-full mt-2"><input type="url" placeholder="URL del Certificado (Opcional)" value="${item.img || ''}" class="w-full p-2 border rounded-lg text-xs ${id}-img-url bg-white"></div>` : ''}
-                                <button type="button" onclick="this.parentElement.remove()" class="absolute -top-2 -right-2 bg-red-500 text-white w-6 h-6 rounded-full text-xs shadow">×</button>
+                            <div class="grid grid-cols-1 md:grid-cols-${placeholders.length} gap-2 p-4 bg-slate-900 rounded-2xl border border-slate-700 relative">
+                                ${placeholders.map((p, i) => `<input type="text" placeholder="${p}" value="${item['f'+i] || ''}" class="p-2 border border-slate-700 bg-slate-800 text-white rounded-lg text-xs ${id}-field-${i} outline-none focus:border-blue-500">`).join('')}
+                                ${hasImage ? `<div class="col-span-full mt-2"><input type="url" placeholder="URL del Certificado (Opcional)" value="${item.img || ''}" class="w-full p-2 border border-slate-700 bg-slate-800 text-white rounded-lg text-xs ${id}-img-url outline-none focus:border-blue-500"></div>` : ''}
+                                <button type="button" onclick="this.parentElement.remove()" class="absolute -top-2 -right-2 bg-red-600 text-white w-6 h-6 rounded-full text-xs shadow">×</button>
                             </div>
                         `).join('') || ''}
                     </div>
@@ -821,11 +698,11 @@
                     const hasImage = btn.dataset.image === 'true';
                     const container = document.getElementById(`${id}-container`);
                     const div = document.createElement('div');
-                    div.className = `grid grid-cols-1 md:grid-cols-${placeholders.length} gap-2 p-4 bg-slate-50 rounded-2xl border relative animate-fade-in`;
+                    div.className = `grid grid-cols-1 md:grid-cols-${placeholders.length} gap-2 p-4 bg-slate-900 rounded-2xl border border-slate-700 relative animate-fade-in`;
                     
-                    let html = placeholders.map((p, i) => `<input type="text" placeholder="${p}" class="p-2 border rounded-lg text-xs ${id}-field-${i}">`).join('');
-                    if (hasImage) html += `<div class="col-span-full mt-2"><input type="url" placeholder="URL del Certificado (Opcional)" class="w-full p-2 border rounded-lg text-xs ${id}-img-url bg-white"></div>`;
-                    html += `<button type="button" onclick="this.parentElement.remove()" class="absolute -top-2 -right-2 bg-red-500 text-white w-6 h-6 rounded-full text-xs shadow">×</button>`;
+                    let html = placeholders.map((p, i) => `<input type="text" placeholder="${p}" class="p-2 border border-slate-700 bg-slate-800 text-white rounded-lg text-xs ${id}-field-${i} outline-none focus:border-blue-500">`).join('');
+                    if (hasImage) html += `<div class="col-span-full mt-2"><input type="url" placeholder="URL del Certificado (Opcional)" class="w-full p-2 border border-slate-700 bg-slate-800 text-white rounded-lg text-xs ${id}-img-url outline-none focus:border-blue-500"></div>`;
+                    html += `<button type="button" onclick="this.parentElement.remove()" class="absolute -top-2 -right-2 bg-red-600 text-white w-6 h-6 rounded-full text-xs shadow">×</button>`;
                     div.innerHTML = html;
                     container.appendChild(div);
                 };
@@ -834,88 +711,87 @@
 
         // --- FUNCIÓN PARA DESCARGAR EL CV EN PDF PROFESIONAL ---
         window.descargarPDF = (nombreCandidato) => {
-            // 1. Seleccionamos el diseño completo del CV
             const elementoCV = document.querySelector('.cv-container');
-            
-            // 2. Ocultamos temporalmente los botones (para que no salgan impresos en el PDF)
             const zonaBotones = elementoCV.querySelector('.no-print');
             zonaBotones.style.display = 'none';
 
-            // 3. Configuramos la calidad y el formato del archivo
             const opcionesPDF = {
-                margin:       0, // Sin márgenes extra para respetar tu diseño
-                filename:     `CV_${nombreCandidato.replace(/\s+/g, '_')}.pdf`, // Nombre dinámico (ej: CV_Juan_Perez.pdf)
+                margin:       0, 
+                filename:     `CV_${nombreCandidato.replace(/\s+/g, '_')}.pdf`,
                 image:        { type: 'jpeg', quality: 0.98 },
-                html2canvas:  { scale: 2, useCORS: true }, // useCORS es VITAL para que las imágenes externas (perfil) carguen bien
+                html2canvas:  { scale: 2, useCORS: true, backgroundColor: '#0f172a' }, 
                 jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
             };
 
-            // 4. Cambiamos el cursor para que sepan que está cargando
             document.body.style.cursor = 'wait';
 
-            // 5. Generamos y descargamos
             html2pdf().set(opcionesPDF).from(elementoCV).save().then(() => {
-                // Restauramos todo a la normalidad
                 zonaBotones.style.display = 'flex';
                 document.body.style.cursor = 'default';
+                showToast("PDF descargado correctamente", "success");
             });
         };
 
         window.loadCV = async (cvId) => {
             const snap = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'cvs', cvId));
-            if (!snap.exists()) return alert("Perfil no encontrado.");
+            if (!snap.exists()) {
+                showToast("Perfil no encontrado.", "error");
+                return;
+            }
             const d = snap.data();
 
             document.getElementById('app-container').innerHTML = `
-                <div class="max-w-5xl mx-auto cv-container bg-white shadow-2xl rounded-3xl overflow-hidden mb-20 animate-fade-in border">
-                    <div class="bg-indigo-900 text-white p-12 relative flex flex-col md:flex-row items-center md:items-start gap-8">
+                <div class="max-w-5xl mx-auto cv-container bg-slate-800 text-slate-200 shadow-2xl rounded-3xl overflow-hidden mb-20 animate-fade-in border border-slate-700">
+                    
+                    <div class="bg-gradient-to-r from-slate-950 to-blue-900 text-white p-12 relative flex flex-col md:flex-row items-center md:items-start gap-8 border-b border-blue-900/50">
                         <div class="absolute top-4 right-4 no-print flex gap-2 items-center">
-                            <button onclick="window.print()" title="Imprimir" class="text-white/70 hover:text-white p-2 transition-colors"><i class="fas fa-print text-xl"></i></button>
-                            <button onclick="descargarPDF('${d.nombre}')" class="bg-indigo-500 text-white px-4 py-2.5 rounded-xl hover:bg-indigo-400 font-black text-xs flex items-center gap-2 shadow-lg transition-all hover:-translate-y-1">
-                                <i class="fas fa-file-pdf text-lg"></i> DESCARGAR PDF
-                            </button>
+                             <button onclick="window.print()" title="Imprimir" class="text-white/50 hover:text-white p-2 transition-colors"><i class="fas fa-print text-xl"></i></button>
+                             <button onclick="descargarPDF('${d.nombre}')" class="bg-blue-600 text-white px-4 py-2.5 rounded-xl hover:bg-blue-500 font-black text-xs flex items-center gap-2 shadow-lg transition-all hover:-translate-y-1">
+                                 <i class="fas fa-file-pdf text-lg"></i> DESCARGAR PDF
+                             </button>
                         </div>
                         
-                        ${d.foto ? `<img src="${d.foto}" class="w-32 h-32 md:w-40 md:h-40 rounded-full object-cover border-4 border-white shadow-xl flex-shrink-0" crossorigin="anonymous">` : ''}
+                        ${d.foto ? `<img src="${d.foto}" class="w-32 h-32 md:w-40 md:h-40 rounded-full object-cover border-4 border-slate-800 shadow-2xl flex-shrink-0" crossorigin="anonymous">` : ''}
                         
                         <div class="text-center md:text-left w-full mt-4 md:mt-0">
                             <h2 class="text-5xl font-black uppercase tracking-tighter">${d.nombre || 'Sin Nombre'}</h2>
-                            <p class="text-indigo-300 font-bold text-xl mt-2">${d.profesion || ''}</p>
+                            <p class="text-blue-400 font-bold text-xl mt-2 tracking-wide">${d.profesion || ''}</p>
                             
-                            <div class="mt-6 flex flex-wrap justify-center md:justify-start gap-5 text-sm opacity-90">
-                                ${d.telefono ? `<span><i class="fas fa-phone mr-2"></i>${d.telefono}</span>` : ''}
-                                ${d.email ? `<span><i class="fas fa-envelope mr-2"></i>${d.email}</span>` : ''}
-                                ${d.direccion ? `<span><i class="fas fa-map-marker-alt mr-2"></i>${d.direccion}</span>` : ''}
+                            <div class="mt-6 flex flex-wrap justify-center md:justify-start gap-5 text-sm opacity-90 font-light">
+                                ${d.telefono ? `<span><i class="fas fa-phone mr-2 text-blue-400"></i>${d.telefono}</span>` : ''}
+                                ${d.email ? `<span><i class="fas fa-envelope mr-2 text-blue-400"></i>${d.email}</span>` : ''}
+                                ${d.direccion ? `<span><i class="fas fa-map-marker-alt mr-2 text-blue-400"></i>${d.direccion}</span>` : ''}
                             </div>
                             
                             <div class="mt-6 flex justify-center md:justify-start gap-5 text-2xl no-print">
-                                ${d.redes?.linkedin ? `<a href="${d.redes.linkedin}" target="_blank" class="text-white/60 hover:text-indigo-400 transition-colors"><i class="fab fa-linkedin"></i></a>` : ''}
+                                ${d.redes?.linkedin ? `<a href="${d.redes.linkedin}" target="_blank" class="text-white/60 hover:text-blue-400 transition-colors"><i class="fab fa-linkedin"></i></a>` : ''}
                                 ${d.redes?.facebook ? `<a href="${d.redes.facebook}" target="_blank" class="text-white/60 hover:text-blue-400 transition-colors"><i class="fab fa-facebook"></i></a>` : ''}
                                 ${d.redes?.instagram ? `<a href="${d.redes.instagram}" target="_blank" class="text-white/60 hover:text-pink-400 transition-colors"><i class="fab fa-instagram"></i></a>` : ''}
                             </div>
                         </div>
                     </div>
 
-                    <div class="p-12 grid grid-cols-1 lg:grid-cols-3 gap-12">
+                    <div class="p-12 grid grid-cols-1 lg:grid-cols-3 gap-12 bg-slate-800">
+                        
                         <div class="lg:col-span-1 space-y-10">
                             <section>
-                                <h4 class="text-xs font-black uppercase tracking-widest text-indigo-600 mb-4 border-l-4 border-indigo-600 pl-3">Datos Personales</h4>
-                                <ul class="text-xs space-y-3 text-slate-600">
-                                    ${d.info_personal?.cedula ? `<li><strong class="text-slate-800">Cédula:</strong><br> ${d.info_personal.cedula}</li>` : ''}
-                                    ${d.info_personal?.estado_civil ? `<li><strong class="text-slate-800">Estado Civil:</strong><br> ${d.info_personal.estado_civil}</li>` : ''}
-                                    ${d.info_personal?.nacionalidad ? `<li><strong class="text-slate-800">Nacionalidad:</strong><br> ${d.info_personal.nacionalidad}</li>` : ''}
-                                    ${d.info_personal?.nacimiento ? `<li><strong class="text-slate-800">F. Nacimiento:</strong><br> ${d.info_personal.nacimiento}</li>` : ''}
+                                <h4 class="text-xs font-black uppercase tracking-widest text-blue-400 mb-4 border-l-4 border-blue-500 pl-3">Datos Personales</h4>
+                                <ul class="text-xs space-y-3 text-slate-400">
+                                    ${d.info_personal?.cedula ? `<li><strong class="text-slate-200">Cédula:</strong><br> ${d.info_personal.cedula}</li>` : ''}
+                                    ${d.info_personal?.estado_civil ? `<li><strong class="text-slate-200">Estado Civil:</strong><br> ${d.info_personal.estado_civil}</li>` : ''}
+                                    ${d.info_personal?.nacionalidad ? `<li><strong class="text-slate-200">Nacionalidad:</strong><br> ${d.info_personal.nacionalidad}</li>` : ''}
+                                    ${d.info_personal?.nacimiento ? `<li><strong class="text-slate-200">F. Nacimiento:</strong><br> ${d.info_personal.nacimiento}</li>` : ''}
                                 </ul>
                             </section>
 
                             ${d.habilidades_lista && d.habilidades_lista.length > 0 ? `
                             <section>
-                                <h4 class="text-xs font-black uppercase tracking-widest text-indigo-600 mb-4 border-l-4 border-indigo-600 pl-3">Habilidades</h4>
+                                <h4 class="text-xs font-black uppercase tracking-widest text-blue-400 mb-4 border-l-4 border-blue-500 pl-3">Habilidades</h4>
                                 <div class="space-y-4">
                                     ${d.habilidades_lista.map(h => `
                                         <div>
-                                            <p class="text-[11px] font-bold text-slate-800 uppercase">${h.nombre}</p>
-                                            <p class="text-[10px] text-slate-500 mt-1">${h.desc}</p>
+                                            <p class="text-[11px] font-bold text-white uppercase">${h.nombre}</p>
+                                            <p class="text-[10px] text-slate-400 mt-1">${h.desc}</p>
                                         </div>
                                     `).join('')}
                                 </div>
@@ -923,14 +799,14 @@
 
                             ${d.idiomas ? `
                             <section>
-                                <h4 class="text-xs font-black uppercase tracking-widest text-indigo-600 mb-4 border-l-4 border-indigo-600 pl-3">Idiomas</h4>
-                                <p class="text-xs text-slate-600 leading-relaxed">${d.idiomas}</p>
+                                <h4 class="text-xs font-black uppercase tracking-widest text-blue-400 mb-4 border-l-4 border-blue-500 pl-3">Idiomas</h4>
+                                <p class="text-xs text-slate-400 leading-relaxed">${d.idiomas}</p>
                             </section>` : ''}
 
                             ${d.intereses ? `
                             <section>
-                                <h4 class="text-xs font-black uppercase tracking-widest text-indigo-600 mb-4 border-l-4 border-indigo-600 pl-3">Intereses</h4>
-                                <p class="text-xs text-slate-600 leading-relaxed">${d.intereses}</p>
+                                <h4 class="text-xs font-black uppercase tracking-widest text-blue-400 mb-4 border-l-4 border-blue-500 pl-3">Intereses</h4>
+                                <p class="text-xs text-slate-400 leading-relaxed">${d.intereses}</p>
                             </section>` : ''}
                         </div>
 
@@ -938,134 +814,87 @@
                             
                             ${d.objetivo ? `
                             <section>
-                                <h4 class="text-xs font-black uppercase tracking-widest text-indigo-600 border-b pb-2 mb-4">Perfil Profesional</h4>
-                                <p class="text-sm text-slate-600 leading-relaxed text-justify">${d.objetivo}</p>
+                                <h4 class="text-xs font-black uppercase tracking-widest text-blue-400 border-b border-slate-700 pb-2 mb-4">Perfil Profesional</h4>
+                                <p class="text-sm text-slate-300 leading-relaxed text-justify">${d.objetivo}</p>
                             </section>` : ''}
 
                             <section>
-                                <h4 class="text-xs font-black uppercase tracking-widest text-indigo-600 border-b pb-2 mb-6">Experiencia Laboral</h4>
+                                <h4 class="text-xs font-black uppercase tracking-widest text-blue-400 border-b border-slate-700 pb-2 mb-6">Experiencia Laboral</h4>
                                 <div class="space-y-6">
                                     ${d.experiencia && d.experiencia.length > 0 ? d.experiencia.map(e => `
-                                        <div class="pl-4 border-l-2 border-indigo-200 hover:border-indigo-500 transition-colors">
+                                        <div class="pl-4 border-l-2 border-slate-600 hover:border-blue-500 transition-colors">
                                             <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1">
-                                                <p class="font-bold text-slate-800 text-sm">${e.f1}</p>
-                                                <span class="text-indigo-600 text-[10px] font-bold uppercase bg-indigo-50 px-2 py-1 rounded w-fit">${e.f2}</span>
+                                                <p class="font-bold text-white text-sm">${e.f1}</p>
+                                                <span class="text-blue-400 text-[10px] font-bold uppercase bg-blue-900/30 border border-blue-800 px-2 py-1 rounded w-fit">${e.f2}</span>
                                             </div>
-                                            <p class="text-xs font-semibold text-slate-500 mt-1"><i class="fas fa-building mr-1"></i> ${e.f0}</p>
-                                            <p class="text-xs text-slate-600 mt-2 leading-relaxed">${e.f3}</p>
+                                            <p class="text-xs font-semibold text-slate-400 mt-1"><i class="fas fa-building mr-1"></i> ${e.f0}</p>
+                                            <p class="text-xs text-slate-300 mt-2 leading-relaxed">${e.f3}</p>
                                         </div>
-                                    `).join('') : '<p class="text-xs text-slate-400">Sin experiencia registrada</p>'}
+                                    `).join('') : '<p class="text-xs text-slate-500">Sin experiencia registrada</p>'}
                                 </div>
                             </section>
 
                             <section>
-                                <h4 class="text-xs font-black uppercase tracking-widest text-indigo-600 border-b pb-2 mb-6">Educación Académica</h4>
+                                <h4 class="text-xs font-black uppercase tracking-widest text-blue-400 border-b border-slate-700 pb-2 mb-6">Educación Académica</h4>
                                 <div class="space-y-4">
                                     ${d.educacion && d.educacion.length > 0 ? d.educacion.map(e => `
-                                        <div class="bg-slate-50 p-5 rounded-xl border border-slate-100">
-                                            <p class="text-sm font-bold text-slate-800">${e.f1}</p>
-                                            <p class="text-[11px] text-slate-500 mt-2 flex flex-wrap gap-3">
+                                        <div class="bg-slate-900 p-5 rounded-xl border border-slate-700">
+                                            <p class="text-sm font-bold text-white">${e.f1}</p>
+                                            <p class="text-[11px] text-slate-400 mt-2 flex flex-wrap gap-3">
                                                 <span><i class="fas fa-university mr-1"></i> ${e.f0}</span>
                                                 <span><i class="fas fa-graduation-cap mr-1"></i> ${e.f2}</span>
                                             </p>
-                                            ${e.img ? `<a href="${e.img}" target="_blank" class="inline-block mt-3 text-[10px] bg-indigo-100 text-indigo-700 px-3 py-1.5 rounded-lg font-bold hover:bg-indigo-200 no-print transition-colors"><i class="fas fa-external-link-alt mr-1"></i> Ver Certificado</a>` : ''}
+                                            ${e.img ? `<a href="${e.img}" target="_blank" class="inline-block mt-3 text-[10px] bg-blue-900/30 text-blue-400 border border-blue-800 px-3 py-1.5 rounded-lg font-bold hover:bg-blue-900/50 no-print transition-colors"><i class="fas fa-external-link-alt mr-1"></i> Ver Certificado</a>` : ''}
                                         </div>
-                                    `).join('') : '<p class="text-xs text-slate-400">Sin registros</p>'}
+                                    `).join('') : '<p class="text-xs text-slate-500">Sin registros</p>'}
                                 </div>
                             </section>
 
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-10">
                                 <section>
-                                    <h4 class="text-xs font-black uppercase tracking-widest text-indigo-600 border-b pb-2 mb-5">Cursos y Talleres</h4>
+                                    <h4 class="text-xs font-black uppercase tracking-widest text-blue-400 border-b border-slate-700 pb-2 mb-5">Cursos y Talleres</h4>
                                     <div class="space-y-5">
                                         ${d.cursos && d.cursos.length > 0 ? d.cursos.map(c => `
-                                            <div class="relative pl-3 border-l border-slate-200">
-                                                <p class="text-[12px] font-bold text-slate-800 leading-tight">${c.f0}</p>
-                                                <p class="text-[10px] text-slate-500 mt-1"><i class="fas fa-map-marker-alt mr-1"></i> ${c.f1}</p>
-                                                ${c.img ? `<a href="${c.img}" target="_blank" class="inline-block mt-2 text-[10px] text-indigo-600 font-bold hover:underline no-print"><i class="fas fa-certificate mr-1"></i> Ver Credencial</a>` : ''}
+                                            <div class="relative pl-3 border-l border-slate-600">
+                                                <p class="text-[12px] font-bold text-white leading-tight">${c.f0}</p>
+                                                <p class="text-[10px] text-slate-400 mt-1"><i class="fas fa-map-marker-alt mr-1"></i> ${c.f1}</p>
+                                                ${c.img ? `<a href="${c.img}" target="_blank" class="inline-block mt-2 text-[10px] text-blue-400 font-bold hover:underline no-print"><i class="fas fa-certificate mr-1"></i> Ver Credencial</a>` : ''}
                                             </div>
-                                        `).join('') : '<p class="text-xs text-slate-400">No especificado</p>'}
+                                        `).join('') : '<p class="text-xs text-slate-500">No especificado</p>'}
                                     </div>
                                 </section>
 
                                 <section>
-                                    <h4 class="text-xs font-black uppercase tracking-widest text-indigo-600 border-b pb-2 mb-5">Diplomados</h4>
+                                    <h4 class="text-xs font-black uppercase tracking-widest text-blue-400 border-b border-slate-700 pb-2 mb-5">Diplomados</h4>
                                     <div class="space-y-5">
                                         ${d.diplomados && d.diplomados.length > 0 ? d.diplomados.map(c => `
-                                            <div class="relative pl-3 border-l border-slate-200">
-                                                <p class="text-[12px] font-bold text-slate-800 leading-tight">${c.f0}</p>
-                                                <p class="text-[10px] text-slate-500 mt-1"><i class="fas fa-map-marker-alt mr-1"></i> ${c.f1}</p>
-                                                ${c.img ? `<a href="${c.img}" target="_blank" class="inline-block mt-2 text-[10px] text-indigo-600 font-bold hover:underline no-print"><i class="fas fa-certificate mr-1"></i> Ver Credencial</a>` : ''}
+                                            <div class="relative pl-3 border-l border-slate-600">
+                                                <p class="text-[12px] font-bold text-white leading-tight">${c.f0}</p>
+                                                <p class="text-[10px] text-slate-400 mt-1"><i class="fas fa-map-marker-alt mr-1"></i> ${c.f1}</p>
+                                                ${c.img ? `<a href="${c.img}" target="_blank" class="inline-block mt-2 text-[10px] text-blue-400 font-bold hover:underline no-print"><i class="fas fa-certificate mr-1"></i> Ver Credencial</a>` : ''}
                                             </div>
-                                        `).join('') : '<p class="text-xs text-slate-400">No especificado</p>'}
+                                        `).join('') : '<p class="text-xs text-slate-500">No especificado</p>'}
                                     </div>
                                 </section>
                             </div>
 
                             <section>
-                                <h4 class="text-xs font-black uppercase tracking-widest text-indigo-600 border-b pb-2 mb-6 mt-6">Referencias Laborales</h4>
+                                <h4 class="text-xs font-black uppercase tracking-widest text-blue-400 border-b border-slate-700 pb-2 mb-6 mt-6">Referencias Laborales</h4>
                                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     ${d.referencias && d.referencias.length > 0 ? d.referencias.map(r => `
-                                        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 hover:border-indigo-300 hover:shadow-md transition-all">
-                                            <p class="text-[13px] font-black text-slate-800">${r.f0}</p>
-                                            <p class="text-[11px] text-slate-500 mt-1">${r.f2}</p>
-                                            <p class="text-[10px] text-slate-400 mt-0.5"><i class="fas fa-building mr-1 text-slate-300"></i> ${r.f1}</p>
-                                            <p class="text-[12px] text-indigo-600 font-bold mt-3 bg-indigo-100/50 w-fit px-2 py-1 rounded"><i class="fas fa-phone mr-1"></i> ${r.f3}</p>
+                                        <div class="bg-slate-900 p-4 rounded-xl border border-slate-700 hover:border-blue-500 transition-all">
+                                            <p class="text-[13px] font-black text-white">${r.f0}</p>
+                                            <p class="text-[11px] text-slate-400 mt-1">${r.f2}</p>
+                                            <p class="text-[10px] text-slate-500 mt-0.5"><i class="fas fa-building mr-1 text-slate-600"></i> ${r.f1}</p>
+                                            <p class="text-[12px] text-blue-400 font-bold mt-3 bg-blue-900/30 border border-blue-800 w-fit px-2 py-1 rounded"><i class="fas fa-phone mr-1"></i> ${r.f3}</p>
                                         </div>
-                                    `).join('') : '<p class="text-xs text-slate-400">Sin referencias</p>'}
+                                    `).join('') : '<p class="text-xs text-slate-500">Sin referencias</p>'}
                                 </div>
                             </section>
+
                         </div>
                     </div>
-                </div>
-            `;
-        };
-
-        window.showQR = (id) => {
-            const url = window.location.origin + window.location.pathname + "?cv=" + id;
-            const modal = document.createElement('div');
-            modal.className = "fixed inset-0 bg-slate-900/90 flex items-center justify-center z-[100] p-4 backdrop-blur-sm";
-            modal.innerHTML = `
-                <div class="bg-white p-10 rounded-3xl text-center shadow-2xl max-w-sm w-full border">
-                    <h3 class="font-black text-2xl mb-8">Acceso Rápido QR</h3>
-                    <div id="qr-box" class="mb-8 flex justify-center p-4 bg-slate-50 rounded-2xl border shadow-inner"></div>
-                    <button onclick="this.parentElement.parentElement.remove()" class="w-full bg-slate-900 text-white py-4 rounded-2xl font-bold">Cerrar</button>
                 </div>`;
-            document.body.appendChild(modal);
-            new QRCode(document.getElementById("qr-box"), { text: url, width: 220, height: 220 });
-        };
-
-        window.renderAccessForm = (cvId) => {
-            document.getElementById('app-container').innerHTML = `
-                <div class="max-w-md mx-auto py-20 animate-fade-in text-center">
-                    <div class="bg-white p-10 rounded-3xl shadow-2xl border">
-                        <div class="w-20 h-20 bg-amber-50 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-6"><i class="fas fa-building text-3xl"></i></div>
-                        <h2 class="text-xl font-bold mb-2">Acceso a Perfil</h2>
-                        <p class="text-sm text-slate-500 mb-8">Inicia sesión como Empresa para ver este currículum.</p>
-                        <form id="access-form" class="space-y-4 text-left">
-                            <input type="email" id="acc-email" placeholder="Correo de Empresa" required class="w-full p-4 bg-slate-50 border rounded-2xl">
-                            <input type="password" id="acc-pass" placeholder="Contraseña" required class="w-full p-4 bg-slate-50 border rounded-2xl">
-                            <button type="submit" class="w-full bg-slate-900 text-white py-4 rounded-2xl font-bold">ENTRAR Y VER CV</button>
-                        </form>
-                    </div>
-                </div>
-            `;
-            
-            document.getElementById('access-form').onsubmit = async (e) => {
-                e.preventDefault();
-                try {
-                    // Ahora se escanea usando Firebase Auth real
-                    const cred = await signInWithEmailAndPassword(auth, document.getElementById('acc-email').value, document.getElementById('acc-pass').value);
-                    const userDoc = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'usuarios_sistema', cred.user.uid));
-                    if(userDoc.exists() && (userDoc.data().tipo === 'empresa' || userDoc.data().tipo === 'admin')) {
-                        // El init() recargará la página y lo manejará correctamente
-                        location.reload();
-                    } else {
-                        alert("Acceso denegado. No eres una empresa.");
-                        await signOut(auth);
-                    }
-                } catch(e) { alert("Datos incorrectos."); }
-            };
         };
 
         // --- CONSOLA DE ADMINISTRADOR ---
@@ -1073,20 +902,20 @@
             const container = document.getElementById('app-container');
             container.innerHTML = `
                 <div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8 animate-fade-in py-8">
-                    <div class="bg-white p-6 rounded-3xl border shadow-sm h-fit">
-                        <h2 class="text-lg font-black mb-4 text-slate-800 border-b pb-4"><i class="fas fa-users text-indigo-600 mr-2"></i> Usuarios</h2>
+                    <div class="bg-slate-800 p-6 rounded-3xl border border-slate-700 shadow-sm h-fit">
+                        <h2 class="text-lg font-black mb-4 text-white border-b border-slate-700 pb-4"><i class="fas fa-users text-blue-500 mr-2"></i> Usuarios</h2>
                         <div class="relative mb-4">
-                            <i class="fas fa-search absolute left-3 top-3 text-slate-400 text-xs"></i>
-                            <input type="text" id="buscador-admin" placeholder="Buscar usuario..." class="w-full pl-8 p-2 bg-slate-50 border rounded-lg text-xs" oninput="filtrarAdmin(this.value)">
+                            <i class="fas fa-search absolute left-3 top-3 text-slate-500 text-xs"></i>
+                            <input type="text" id="buscador-admin" placeholder="Buscar usuario..." class="w-full pl-8 p-2 bg-slate-900 border border-slate-700 rounded-lg text-xs text-white outline-none focus:border-blue-500" oninput="filtrarAdmin(this.value)">
                         </div>
-                        <div id="admin-list" class="space-y-3 max-h-[500px] overflow-y-auto pr-2"><p class="text-center text-slate-400 text-xs">Cargando...</p></div>
+                        <div id="admin-list" class="space-y-3 max-h-[500px] overflow-y-auto pr-2"><p class="text-center text-slate-500 text-xs">Cargando...</p></div>
                     </div>
-                    <div class="bg-slate-50 p-6 rounded-3xl border shadow-sm h-fit">
-                        <h2 class="text-lg font-black mb-6 text-slate-800 border-b pb-4"><i class="fas fa-bell text-amber-500 mr-2"></i> Ediciones de CV</h2>
+                    <div class="bg-slate-800 p-6 rounded-3xl border border-slate-700 shadow-sm h-fit">
+                        <h2 class="text-lg font-black mb-6 text-white border-b border-slate-700 pb-4"><i class="fas fa-bell text-amber-500 mr-2"></i> Solicitudes de Edición</h2>
                         <div id="solicitudes-list" class="space-y-4 max-h-[500px] overflow-y-auto pr-2"></div>
                     </div>
-                    <div class="bg-indigo-50 p-6 rounded-3xl border shadow-sm h-fit">
-                        <h2 class="text-lg font-black mb-6 text-indigo-900 border-b pb-4"><i class="fas fa-gem text-indigo-500 mr-2"></i> Pagos PRO</h2>
+                    <div class="bg-slate-800 p-6 rounded-3xl border border-slate-700 shadow-sm h-fit">
+                        <h2 class="text-lg font-black mb-6 text-white border-b border-slate-700 pb-4"><i class="fas fa-gem text-blue-500 mr-2"></i> Pagos PRO</h2>
                         <div id="pagos-list" class="space-y-4 max-h-[500px] overflow-y-auto pr-2"></div>
                     </div>
                 </div>
@@ -1104,18 +933,18 @@
                 const s = d.data();
                 if(s.estado === 'pendiente') {
                     solList.innerHTML += `
-                        <div class="bg-white p-4 rounded-2xl border border-amber-200 shadow-sm relative" id="sol-${d.id}">
+                        <div class="bg-slate-900 p-4 rounded-2xl border border-amber-900/50 shadow-sm relative" id="sol-${d.id}">
                             <div class="flex gap-2 mb-2">
-                                <button onclick="marcarSolicitudLista('${d.id}')" class="bg-green-100 text-green-700 hover:bg-green-500 hover:text-white px-2 py-1 rounded-lg text-[10px] font-bold"><i class="fas fa-check mr-1"></i> Listo</button>
-                                <button onclick="adminProxy('${s.nombre}', '${s.email}', 'usuario')" class="bg-indigo-100 text-indigo-700 hover:bg-indigo-600 hover:text-white px-2 py-1 rounded-lg text-[10px] font-bold"><i class="fas fa-edit mr-1"></i> Editar</button>
+                                <button onclick="marcarSolicitudLista('${d.id}')" class="bg-emerald-900/30 text-emerald-400 border border-emerald-800 px-2 py-1 rounded-lg text-[10px] font-bold hover:bg-emerald-800 transition-colors"><i class="fas fa-check mr-1"></i> Listo</button>
+                                <button onclick="adminProxy('${s.nombre}', '${s.email}', 'usuario')" class="bg-blue-900/30 text-blue-400 border border-blue-800 px-2 py-1 rounded-lg text-[10px] font-bold hover:bg-blue-800 transition-colors"><i class="fas fa-edit mr-1"></i> Editar</button>
                             </div>
-                            <p class="text-xs font-bold text-amber-900 mb-1">${s.nombre}</p>
-                            <div class="bg-amber-50 p-2 rounded-lg border border-amber-100 mb-2 text-[10px] text-amber-900 whitespace-pre-wrap">${s.texto}</div>
+                            <p class="text-xs font-bold text-amber-400 mb-1">${s.nombre}</p>
+                            <div class="bg-slate-800 p-2 rounded-lg border border-slate-700 mb-2 text-[10px] text-slate-300 whitespace-pre-wrap">${s.texto}</div>
                         </div>
                     `;
                 }
             });
-            if(solList.innerHTML === '') solList.innerHTML = '<p class="text-xs text-slate-400 text-center py-5">No hay solicitudes.</p>';
+            if(solList.innerHTML === '') solList.innerHTML = '<p class="text-xs text-slate-500 text-center py-5">No hay solicitudes.</p>';
 
             const pagosReq = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'solicitudes_plan'));
             const pagosList = document.getElementById('pagos-list');
@@ -1124,18 +953,18 @@
                 const p = d.data();
                 if(p.estado === 'pendiente') {
                     pagosList.innerHTML += `
-                        <div class="bg-white p-4 rounded-2xl border-2 border-indigo-200 shadow-sm relative" id="pago-${d.id}">
-                            <span class="absolute top-3 right-3 bg-indigo-100 text-indigo-700 text-[9px] font-black px-2 py-1 rounded uppercase">${p.tipo_usuario}</span>
-                            <p class="text-sm font-black text-indigo-900 mb-1">${p.nombre}</p>
-                            <p class="text-[10px] text-slate-500 mb-4">${p.email} • ${p.fecha}</p>
-                            <button onclick="aprobarPlanPRO('${d.id}', '${p.usuario_id}')" class="w-full bg-emerald-500 text-white hover:bg-emerald-600 px-3 py-2 rounded-xl flex items-center justify-center gap-2 text-xs font-bold transition-colors shadow-md">
+                        <div class="bg-slate-900 p-4 rounded-2xl border border-blue-900 shadow-sm relative" id="pago-${d.id}">
+                            <span class="absolute top-3 right-3 bg-blue-900/50 border border-blue-800 text-blue-400 text-[9px] font-black px-2 py-1 rounded uppercase">${p.tipo_usuario}</span>
+                            <p class="text-sm font-black text-white mb-1">${p.nombre}</p>
+                            <p class="text-[10px] text-slate-400 mb-4">${p.email} • ${p.fecha}</p>
+                            <button onclick="aprobarPlanPRO('${d.id}', '${p.usuario_id}')" class="w-full bg-emerald-600 text-white hover:bg-emerald-500 px-3 py-2 rounded-xl flex items-center justify-center gap-2 text-xs font-bold transition-colors shadow-md">
                                 <i class="fas fa-check-double"></i> Aprobar Cuenta PRO
                             </button>
                         </div>
                     `;
                 }
             });
-            if(pagosList.innerHTML === '') pagosList.innerHTML = '<p class="text-xs text-indigo-300 text-center py-5">Todo al día. Sin pagos pendientes.</p>';
+            if(pagosList.innerHTML === '') pagosList.innerHTML = '<p class="text-xs text-slate-500 text-center py-5">Todo al día. Sin pagos pendientes.</p>';
         };
 
         window.dibujarListaAdmin = (lista) => {
@@ -1143,12 +972,12 @@
             listContainer.innerHTML = '';
             lista.forEach(u => {
                 listContainer.innerHTML += `
-                    <div class="bg-slate-50 p-4 rounded-2xl border flex flex-col gap-2 hover:shadow-md transition-shadow">
+                    <div class="bg-slate-900 p-4 rounded-2xl border border-slate-700 flex flex-col gap-2 hover:border-blue-500 transition-colors">
                         <div>
-                            <p class="font-bold text-sm text-slate-800">${u.nombre}</p>
-                            <p class="text-[10px] text-slate-500 uppercase">${u.email} <span class="text-indigo-600 font-bold ml-1">[${u.tipo}]</span> <span class="text-amber-500 font-black ml-1">[${u.plan || 'GRATIS'}]</span></p>
+                            <p class="font-bold text-sm text-white">${u.nombre}</p>
+                            <p class="text-[10px] text-slate-400 uppercase">${u.email} <span class="text-blue-500 font-bold ml-1">[${u.tipo}]</span> <span class="text-amber-500 font-black ml-1">[${u.plan || 'GRATIS'}]</span></p>
                         </div>
-                        <button onclick="adminProxy('${u.nombre}', '${u.email}', '${u.tipo}')" class="bg-indigo-600 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold hover:bg-indigo-700 w-full">Editar Perfil</button>
+                        <button onclick="adminProxy('${u.nombre}', '${u.email}', '${u.tipo}')" class="bg-slate-700 text-white border border-slate-600 px-3 py-1.5 rounded-lg text-[10px] font-bold hover:bg-blue-600 w-full transition-colors">Editar Perfil</button>
                     </div>`;
             });
         };
@@ -1162,6 +991,7 @@
             if(confirm("¿Estás seguro de marcar esta solicitud como completada?")) {
                 await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'solicitudes', id), { estado: 'completado' });
                 document.getElementById('sol-'+id).remove();
+                showToast("Solicitud completada", "success");
             }
         };
 
@@ -1172,7 +1002,7 @@
                 await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'usuarios_sistema', userId), { plan: 'pro', expiracion_plan: fechaExpiracion.getTime() });
                 await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'solicitudes_plan', reqId), { estado: 'aprobado' });
                 document.getElementById('pago-'+reqId).remove();
-                alert("¡Cuenta activada! El usuario ahora es PRO.");
+                showToast("¡Cuenta PRO activada!", "success");
             }
         };
 
@@ -1182,13 +1012,30 @@
             else renderDashboard(targetUser, true);
         };
 
+        window.enviarSolicitud = async (email, nombre) => { 
+            const texto = document.getElementById('sol-texto').value; 
+            const link = document.getElementById('sol-url').value; 
+            if(!texto.trim()) return showToast("Debes escribir detalles de lo que quieres modificar.", "error"); 
+            
+            try { 
+                await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'solicitudes'), { email, nombre, texto, link, estado: 'pendiente', fecha: new Date().toLocaleDateString(), timestamp: serverTimestamp() }); 
+                showToast("¡Enviada con éxito! El administrador la revisará pronto.", "success"); 
+                document.getElementById('solicitud-box').classList.add('hidden'); 
+            } catch(e) { showToast("Error al enviar la solicitud.", "error"); } 
+        };
+
         init();
     </script>
+    
+    <!-- Footer -->
     <footer class="p-6 text-center text-slate-500 text-sm border-t border-slate-800 mt-auto">
-    <a href="https://handhels-programmer.github.io/LorHels-Systems" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:text-blue-300 transition-colors duration-200 font-medium">
-        LorHels Systems
-    </a> 
-    &copy; 2026 - Soluciones Digitales a Medida
-</footer>
+ 
+        <p>&copy; 2026
+            <a href="https://lorhels.web.app" target="\_blank" rel="noopener noreferrer" class="text-blue-400 hover:text-blue-300 transition-colors duration-200 font-medium">
+            LorHels Systems
+        </a> Todos los derechos reservados.</p>
+        <p style="margin-top: 10px; color: #4b5563;">Desarrollado con pasión para brindar las mejores soluciones.</p>
+    </footer>
+    
 </body>
 </html>
