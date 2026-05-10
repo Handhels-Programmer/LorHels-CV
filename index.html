@@ -65,8 +65,11 @@
 
         let currentUser = null; 
 
-        // --- SISTEMA DE NOTIFICACIONES (TOAST) ---
-        window.showToast = (message, type = 'success') => {
+        // ==========================================
+        // 1. DECLARACIÓN DE TODAS LAS FUNCIONES
+        // ==========================================
+
+        function showToast(message, type = 'success') {
             let container = document.getElementById('toast-container');
             if (!container) {
                 container = document.createElement('div');
@@ -86,20 +89,13 @@
             toast.innerHTML = `<i class="fas ${icon} text-xl flex-shrink-0"></i><p class="text-sm font-medium leading-tight">${message}</p>`;
 
             container.appendChild(toast);
-
-            // Animar entrada
-            requestAnimationFrame(() => {
-                toast.classList.remove('translate-x-full', 'opacity-0');
-            });
-
-            // Animar salida y remover
+            requestAnimationFrame(() => toast.classList.remove('translate-x-full', 'opacity-0'));
             setTimeout(() => {
                 toast.classList.add('translate-x-full', 'opacity-0');
                 setTimeout(() => toast.remove(), 300);
             }, 4000);
-        };
+        }
 
-        // --- SISTEMA DE SESIONES INTELIGENTE ---
         async function init() {
             try {
                 onAuthStateChanged(auth, async (user) => {
@@ -109,7 +105,6 @@
 
                         if (user && !user.isAnonymous) {
                             const userDoc = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'usuarios_sistema', user.uid));
-                            
                             if (userDoc.exists()) {
                                 let uData = userDoc.data();
                                 
@@ -148,25 +143,19 @@
                                     else if (currentUser.tipo === 'empresa') renderEmpresaDashboard(currentUser);
                                     else renderDashboard(currentUser, false);
                                 }
-                            } else {
-                                await signOut(auth);
-                                renderWelcome();
-                            }
+                            } else { await signOut(auth); renderWelcome(); }
                         } else {
                             if (!user) { try { await signInAnonymously(auth); } catch(err) {} }
-                            if (cvId) renderAccessForm(cvId); 
-                            else renderWelcome();
+                            if (cvId) renderAccessForm(cvId); else renderWelcome();
                         }
                     } catch(e) { console.error(e); renderWelcome(); }
                 });
             } catch (e) { console.error(e); }
         }
 
-        // --- PANTALLAS PRINCIPALES ---
         function renderWelcome() {
             const roleDisp = document.getElementById('role-display');
             if(roleDisp) roleDisp.innerText = "Visitante";
-            
             const container = document.getElementById('app-container');
             container.innerHTML = `
                 <div class="max-w-5xl mx-auto py-16 text-center animate-fade-in">
@@ -189,7 +178,7 @@
                 </div>`;
         }
 
-        window.renderAuthOption = (type) => {
+        function renderAuthOption(type) {
             const container = document.getElementById('app-container');
             container.innerHTML = `
                 <div class="max-w-md mx-auto py-10 animate-fade-in">
@@ -202,10 +191,9 @@
                         </div>
                     </div>
                 </div>`;
-        };
+        }
 
-        // --- LOGIN SEGURO CON FIREBASE AUTH ---
-        window.renderLogin = (type) => {
+        function renderLogin(type) {
             document.getElementById('app-container').innerHTML = `
                 <div class="max-w-md mx-auto py-10 animate-fade-in">
                     <button onclick="renderAuthOption('${type}')" class="mb-6 text-slate-400 hover:text-blue-400 flex items-center gap-2"><i class="fas fa-arrow-left"></i> Atrás</button>
@@ -223,7 +211,6 @@
                 e.preventDefault();
                 const btn = e.target.querySelector('button');
                 btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verificando...';
-                
                 try {
                     const cred = await signInWithEmailAndPassword(auth, document.getElementById('log-email').value, document.getElementById('log-pass').value);
                     const userDoc = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'usuarios_sistema', cred.user.uid));
@@ -239,10 +226,9 @@
                     btn.innerHTML = 'ENTRAR';
                 }
             };
-        };
+        }
 
-        // --- REGISTRO SEGURO CON FIREBASE AUTH ---
-        window.renderRegister = (type) => {
+        function renderRegister(type) {
             document.getElementById('app-container').innerHTML = `
                 <div class="max-w-md mx-auto py-10 animate-fade-in">
                     <button onclick="renderAuthOption('${type}')" class="mb-6 text-slate-400 hover:text-blue-400 flex items-center gap-2"><i class="fas fa-arrow-left"></i> Atrás</button>
@@ -261,17 +247,11 @@
                 e.preventDefault();
                 const btn = e.target.querySelector('button');
                 btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creando...';
-                
                 try {
                     const cred = await createUserWithEmailAndPassword(auth, document.getElementById('reg-email').value, document.getElementById('reg-pass').value);
                     await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'usuarios_sistema', cred.user.uid), {
-                        nombre: document.getElementById('reg-name').value,
-                        email: document.getElementById('reg-email').value,
-                        tipo: type,
-                        plan: 'gratis',
-                        timestamp: serverTimestamp()
+                        nombre: document.getElementById('reg-name').value, email: document.getElementById('reg-email').value, tipo: type, plan: 'gratis', timestamp: serverTimestamp()
                     });
-                    
                     showToast("¡Cuenta segura creada con éxito!", "success");
                     setTimeout(() => location.reload(), 1500);
                 } catch(error) {
@@ -279,9 +259,8 @@
                     btn.innerHTML = 'CREAR CUENTA';
                 }
             };
-        };
+        }
 
-        // --- DASHBOARD DE LA EMPRESA ---
         async function renderEmpresaDashboard(user) {
             const container = document.getElementById('app-container');
             const isPremium = user.plan === 'pro' || user.tipo === 'admin';
@@ -290,13 +269,9 @@
                 container.innerHTML = `
                     <div class="max-w-5xl mx-auto py-12 animate-fade-in text-center">
                         <div class="bg-slate-800 p-12 rounded-3xl border border-slate-700 mb-8 shadow-sm">
-                            <div class="w-20 h-20 bg-amber-500/10 text-amber-500 rounded-full flex items-center justify-center mx-auto mb-6">
-                                <i class="fas fa-lock text-3xl"></i>
-                            </div>
+                            <div class="w-20 h-20 bg-amber-500/10 text-amber-500 rounded-full flex items-center justify-center mx-auto mb-6"><i class="fas fa-lock text-3xl"></i></div>
                             <h2 class="text-3xl font-black mb-4 text-white">Buscador Global Bloqueado</h2>
-                            <p class="text-slate-400 mb-8 max-w-lg mx-auto text-lg">
-                                Tu cuenta actual <b>(Gratis)</b> solo te permite ver los currículums cuando escaneas directamente el código QR de un candidato.
-                            </p>
+                            <p class="text-slate-400 mb-8 max-w-lg mx-auto text-lg">Tu cuenta actual <b>(Gratis)</b> solo te permite ver los currículums cuando escaneas directamente el código QR.</p>
                             <button onclick="renderPaywall('empresa')" class="bg-amber-500 text-slate-900 px-8 py-4 rounded-2xl font-black shadow-lg hover:bg-amber-400 transition-colors uppercase tracking-widest inline-flex items-center gap-2">
                                 <i class="fas fa-crown"></i> Desbloquear Premium
                             </button>
@@ -309,26 +284,18 @@
                 <div class="max-w-6xl mx-auto py-8 animate-fade-in">
                     <div class="bg-slate-800 p-8 rounded-3xl border border-slate-700 mb-8 flex flex-col md:flex-row justify-between items-center gap-6 shadow-lg">
                         <div>
-                            <h2 class="text-3xl font-black flex items-center gap-3 text-white">
-                                <i class="fas fa-crown text-amber-500"></i> Portal Premium
-                            </h2>
+                            <h2 class="text-3xl font-black flex items-center gap-3 text-white"><i class="fas fa-crown text-amber-500"></i> Portal Premium</h2>
                             <p class="text-slate-400 mt-1">Bienvenido, ${user.nombre}. Busca y guarda el mejor talento.</p>
                         </div>
                         <div class="w-full md:w-1/2 relative">
                             <i class="fas fa-search absolute left-4 top-4 text-slate-500"></i>
-                            <input type="text" id="buscador-talento" placeholder="Buscar por profesión, nombre o habilidad..." 
-                                class="w-full pl-11 p-3 bg-slate-900 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:ring-2 focus:ring-blue-500 outline-none transition-all" 
-                                oninput="filtrarTalento(this.value)">
+                            <input type="text" id="buscador-talento" placeholder="Buscar por profesión, nombre o habilidad..." class="w-full pl-11 p-3 bg-slate-900 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:ring-2 focus:ring-blue-500 outline-none transition-all" oninput="filtrarTalento(this.value)">
                         </div>
                     </div>
-
                     <div class="mb-6 flex gap-3 border-b border-slate-800 pb-4">
                         <button onclick="mostrarTodos()" class="text-sm font-bold text-blue-400 bg-blue-900/30 border border-blue-900/50 px-5 py-2.5 rounded-xl hover:bg-blue-900/50 transition-colors">Todos los Candidatos</button>
-                        <button onclick="mostrarFavoritos()" class="text-sm font-bold text-pink-400 bg-pink-900/20 border border-pink-900/30 px-5 py-2.5 rounded-xl hover:bg-pink-900/40 transition-colors flex items-center gap-2">
-                            <i class="fas fa-heart"></i> Mis Favoritos
-                        </button>
+                        <button onclick="mostrarFavoritos()" class="text-sm font-bold text-pink-400 bg-pink-900/20 border border-pink-900/30 px-5 py-2.5 rounded-xl hover:bg-pink-900/40 transition-colors flex items-center gap-2"><i class="fas fa-heart"></i> Mis Favoritos</button>
                     </div>
-
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6" id="cv-grid">
                         <div class="col-span-full text-center py-10 text-slate-500"><i class="fas fa-spinner fa-spin text-3xl mb-3"></i><p>Cargando talentos...</p></div>
                     </div>
@@ -337,70 +304,47 @@
             window.allCVs = [];
             const cvsSnap = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'cvs'));
             cvsSnap.forEach(d => { window.allCVs.push({ id: d.id, ...d.data() }); });
-
             if (!currentUser.favoritos) currentUser.favoritos = [];
             dibujarGridCVs(window.allCVs);
         }
 
-        window.dibujarGridCVs = (cvList) => {
+        function dibujarGridCVs(cvList) {
             const grid = document.getElementById('cv-grid');
             grid.innerHTML = '';
-            
             if (cvList.length === 0) {
                 grid.innerHTML = '<p class="text-slate-500 col-span-full text-center py-10 bg-slate-800 rounded-2xl border border-dashed border-slate-700">No se encontraron candidatos.</p>';
                 return;
             }
-
             cvList.forEach(cv => {
                 const esFavorito = currentUser.favoritos && currentUser.favoritos.includes(cv.id);
                 const corazon = esFavorito ? 'fas text-pink-500' : 'far text-slate-600 hover:text-pink-400';
-
                 grid.innerHTML += `
                     <div class="bg-slate-800 p-6 rounded-3xl border border-slate-700 hover:shadow-2xl hover:shadow-blue-900/20 transition-all relative group flex flex-col h-full hover:border-blue-500">
-                        <button onclick="toggleFavorito('${cv.id}')" class="absolute top-4 right-4 text-xl z-10 p-2 bg-slate-900/80 rounded-full backdrop-blur-sm shadow-sm transition-transform hover:scale-110 border border-slate-700">
-                            <i class="fa-heart ${corazon}" id="fav-icon-${cv.id}"></i>
-                        </button>
-                        
+                        <button onclick="toggleFavorito('${cv.id}')" class="absolute top-4 right-4 text-xl z-10 p-2 bg-slate-900/80 rounded-full backdrop-blur-sm shadow-sm transition-transform hover:scale-110 border border-slate-700"><i class="fa-heart ${corazon}" id="fav-icon-${cv.id}"></i></button>
                         <div class="w-16 h-16 bg-slate-900 text-blue-500 border border-slate-700 rounded-2xl flex items-center justify-center mb-4 overflow-hidden group-hover:border-blue-500 transition-colors flex-shrink-0">
                             ${cv.foto ? `<img src="${cv.foto}" class="w-full h-full object-cover">` : `<i class="fas fa-user-tie text-2xl"></i>`}
                         </div>
-                        
                         <div class="flex-1">
                             <h3 class="font-bold text-lg text-white leading-tight">${cv.nombre}</h3>
                             <p class="text-blue-400 text-xs font-black mb-2 uppercase tracking-wide mt-1">${cv.profesion || 'Candidato'}</p>
-                            <p class="text-[11px] text-slate-400 line-clamp-3 mb-4 leading-relaxed">${cv.objetivo || 'Sin descripción de perfil.'}</p>
+                            <p class="text-[11px] text-slate-400 line-clamp-3 mb-4 leading-relaxed">${cv.objetivo || 'Sin descripción.'}</p>
                         </div>
-                        
                         <button onclick="loadCV('${cv.id}')" class="w-full py-3 bg-blue-600 text-white rounded-xl text-xs font-black hover:bg-blue-500 transition-colors mt-auto shadow-lg shadow-blue-900/20">VER PERFIL</button>
                     </div>`;
             });
-        };
+        }
 
-        window.filtrarTalento = (queryStr) => {
+        function filtrarTalento(queryStr) {
             const q = queryStr.toLowerCase();
-            const filtrados = window.allCVs.filter(cv => 
-                (cv.nombre && cv.nombre.toLowerCase().includes(q)) || 
-                (cv.profesion && cv.profesion.toLowerCase().includes(q)) ||
-                (cv.objetivo && cv.objetivo.toLowerCase().includes(q))
-            );
-            dibujarGridCVs(filtrados);
-        };
+            dibujarGridCVs(window.allCVs.filter(cv => (cv.nombre && cv.nombre.toLowerCase().includes(q)) || (cv.profesion && cv.profesion.toLowerCase().includes(q)) || (cv.objetivo && cv.objetivo.toLowerCase().includes(q))));
+        }
 
-        window.mostrarTodos = () => {
-            document.getElementById('buscador-talento').value = '';
-            dibujarGridCVs(window.allCVs);
-        };
+        function mostrarTodos() { document.getElementById('buscador-talento').value = ''; dibujarGridCVs(window.allCVs); }
+        function mostrarFavoritos() { document.getElementById('buscador-talento').value = ''; dibujarGridCVs(window.allCVs.filter(cv => currentUser.favoritos?.includes(cv.id))); }
 
-        window.mostrarFavoritos = () => {
-            document.getElementById('buscador-talento').value = '';
-            const favs = window.allCVs.filter(cv => currentUser.favoritos && currentUser.favoritos.includes(cv.id));
-            dibujarGridCVs(favs);
-        };
-
-        window.toggleFavorito = async (cvId) => {
+        async function toggleFavorito(cvId) {
             if(!currentUser.favoritos) currentUser.favoritos = [];
             const index = currentUser.favoritos.indexOf(cvId);
-            
             if(index > -1) {
                 currentUser.favoritos.splice(index, 1); 
                 document.getElementById('fav-icon-'+cvId).className = 'fa-heart far text-slate-600 hover:text-pink-400';
@@ -410,15 +354,9 @@
                 document.getElementById('fav-icon-'+cvId).className = 'fa-heart fas text-pink-500';
                 showToast("Guardado en favoritos", "success");
             }
+            try { await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'usuarios_sistema', currentUser.id), { favoritos: currentUser.favoritos }); } catch(e) {}
+        }
 
-            try {
-                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'usuarios_sistema', currentUser.id), {
-                    favoritos: currentUser.favoritos
-                });
-            } catch(e) { console.error("Error guardando favorito:", e); }
-        };
-
-        // --- DASHBOARD DEL CANDIDATO (Con editor de Habilidades) ---
         async function renderDashboard(targetUser, isAdminEditing = false) {
             const cvsSnap = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'cvs'));
             let cv = null;
@@ -431,8 +369,8 @@
             }
 
             const isFullAccess = isAdminEditing || (currentUser && currentUser.tipo === 'admin');
-
             const container = document.getElementById('app-container');
+            
             container.innerHTML = `
                 <div class="max-w-5xl mx-auto py-8 animate-fade-in">
                     <div class="bg-slate-800 p-8 rounded-3xl border border-slate-700 mb-10 flex flex-col md:flex-row justify-between items-center gap-6 shadow-lg">
@@ -441,12 +379,9 @@
                             <p class="text-slate-400">Editando perfil de: ${targetUser.email}</p>
                         </div>
                         <div class="flex gap-4 flex-wrap">
-                            ${isFullAccess ? `<button onclick="renderAdminPanel()" class="bg-slate-700 text-white px-6 py-3 rounded-2xl font-bold border border-slate-600 hover:bg-slate-600">Volver a Consola</button>` : ''}
+                            ${isFullAccess ? `<button onclick="renderAdminPanel()" class="bg-slate-700 text-white px-6 py-3 rounded-2xl font-bold border border-slate-600 hover:bg-slate-600 transition-colors">Volver a Consola</button>` : ''}
                             ${cv ? `
-                                <button onclick="showVisitas('${cv.id}')" class="bg-blue-900/30 text-blue-400 px-6 py-3 rounded-2xl font-bold border border-blue-800 hover:bg-blue-900/50 flex items-center gap-2 transition-colors shadow-sm">
-                                    <i class="fas fa-chart-line"></i> ${totalVisitas} VISTAS
-                                </button>
-                                
+                                <button onclick="showVisitas('${cv.id}')" class="bg-blue-900/30 text-blue-400 px-6 py-3 rounded-2xl font-bold border border-blue-800 hover:bg-blue-900/50 flex items-center gap-2 transition-colors shadow-sm"><i class="fas fa-chart-line"></i> ${totalVisitas} VISTAS</button>
                                 <button onclick="showQR('${cv.id}')" class="bg-blue-600 text-white px-6 py-3 rounded-2xl font-bold flex items-center gap-2 hover:bg-blue-500 transition-colors"><i class="fas fa-qrcode"></i> MI QR</button>
                                 <button onclick="loadCV('${cv.id}')" class="bg-slate-900 text-white px-6 py-3 rounded-2xl font-bold border border-slate-700 hover:border-slate-500 flex items-center gap-2 transition-colors"><i class="fas fa-eye"></i> VISTA PREVIA</button>
                             ` : ''}
@@ -456,15 +391,22 @@
                     <form id="cv-full-form" class="space-y-10">
                         <div class="bg-slate-800 p-8 rounded-3xl border border-slate-700 shadow-sm">
                             <h3 class="font-black text-blue-400 mb-6 text-xs uppercase border-b border-slate-700 pb-2"><i class="fas fa-user"></i> 1. Información General</h3>
-                            
                             <div class="flex items-center gap-6 mb-6 bg-slate-900 p-4 rounded-2xl border border-dashed border-slate-700">
-                                <img id="cv-foto-preview" src="${cv?.foto || 'https://via.placeholder.com/150'}" class="w-24 h-24 rounded-full object-cover border-4 border-slate-800 shadow-md">
-                                <div class="flex-1">
-                                    <label class="block text-xs font-bold text-slate-400 mb-1">URL de Foto de Perfil</label>
-                                    <input type="url" id="cv-foto" value="${cv?.foto || ''}" placeholder="Ej: https://ejemplo.com/mifoto.jpg" class="w-full p-3 bg-slate-800 border border-slate-700 rounded-xl text-sm text-white outline-none focus:border-blue-500" oninput="document.getElementById('cv-foto-preview').src = this.value || 'https://via.placeholder.com/150'">
+                                <div class="relative group flex-shrink-0">
+                                    <img id="cv-foto-preview" src="${cv?.foto || 'https://via.placeholder.com/150'}" class="w-24 h-24 rounded-full object-cover border-4 border-slate-800 shadow-md transition-opacity">
+                                    <div id="upload-overlay" class="absolute inset-0 bg-slate-900/80 rounded-full flex items-center justify-center hidden backdrop-blur-sm transition-all"><i class="fas fa-spinner fa-spin text-blue-500 text-2xl"></i></div>
+                                </div>
+                                <div class="flex-1 space-y-3">
+                                    <div>
+                                        <label class="block text-xs font-bold text-slate-400 mb-2">Subir Foto de Perfil <span class="text-emerald-500 ml-1 font-black px-2 py-0.5 bg-emerald-900/30 border border-emerald-800 rounded-full text-[9px]">NUEVO</span></label>
+                                        <input type="file" id="cv-foto-file" accept="image/*" class="w-full text-sm text-slate-400 file:mr-4 file:py-2.5 file:px-5 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-blue-600 file:text-white hover:file:bg-blue-500 file:cursor-pointer cursor-pointer transition-colors" onchange="subirFotoCloudinary(event)">
+                                    </div>
+                                    <div>
+                                        <label class="block text-[10px] font-bold text-slate-500 mb-1">O si lo prefieres, pega una URL directa:</label>
+                                        <input type="url" id="cv-foto" value="${cv?.foto || ''}" placeholder="Ej: https://ejemplo.com/mifoto.jpg" class="w-full p-2 bg-slate-800 border border-slate-700 rounded-lg text-xs text-white outline-none focus:border-blue-500 transition-colors" oninput="document.getElementById('cv-foto-preview').src = this.value || 'https://via.placeholder.com/150'">
+                                    </div>
                                 </div>
                             </div>
-
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                                 <input type="text" id="cv-nombre" value="${cv?.nombre || targetUser.nombre}" placeholder="Nombre Completo" class="w-full p-4 bg-slate-900 border border-slate-700 rounded-2xl text-white outline-none focus:border-blue-500">
                                 <input type="text" id="cv-prof" value="${cv?.profesion || ''}" placeholder="Profesión / Título" class="w-full p-4 bg-slate-900 border border-slate-700 rounded-2xl text-white outline-none focus:border-blue-500">
@@ -505,7 +447,6 @@
 
                             <div class="bg-slate-800 p-8 rounded-3xl border border-slate-700 shadow-sm mt-8">
                                 <h3 class="font-black text-blue-400 mb-6 text-xs uppercase border-b border-slate-700 pb-2">Habilidades, Idiomas e Intereses</h3>
-                                
                                 <div class="mb-8">
                                     <div class="flex justify-between items-center mb-4">
                                         <label class="text-[10px] font-black text-slate-500">LISTA DE HABILIDADES</label>
@@ -521,49 +462,30 @@
                                         `).join('') || ''}
                                     </div>
                                 </div>
-
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div class="space-y-2">
-                                        <label class="text-[10px] font-black text-slate-500">IDIOMAS</label>
-                                        <input type="text" id="cv-idi" value="${cv?.idiomas || ''}" placeholder="Ej: Inglés (Avanzado), Español (Nativo)" class="p-4 bg-slate-900 border border-slate-700 rounded-2xl w-full text-sm text-white outline-none focus:border-blue-500">
-                                    </div>
-                                    <div class="space-y-2">
-                                        <label class="text-[10px] font-black text-slate-500">INTERESES</label>
-                                        <input type="text" id="cv-int" value="${cv?.intereses || ''}" placeholder="Ej: Tecnología, Diseño, Lectura" class="p-4 bg-slate-900 border border-slate-700 rounded-2xl w-full text-sm text-white outline-none focus:border-blue-500">
-                                    </div>
+                                    <div class="space-y-2"><label class="text-[10px] font-black text-slate-500">IDIOMAS</label><input type="text" id="cv-idi" value="${cv?.idiomas || ''}" placeholder="Ej: Inglés (Avanzado)" class="p-4 bg-slate-900 border border-slate-700 rounded-2xl w-full text-sm text-white outline-none focus:border-blue-500"></div>
+                                    <div class="space-y-2"><label class="text-[10px] font-black text-slate-500">INTERESES</label><input type="text" id="cv-int" value="${cv?.intereses || ''}" placeholder="Ej: Tecnología, Diseño" class="p-4 bg-slate-900 border border-slate-700 rounded-2xl w-full text-sm text-white outline-none focus:border-blue-500"></div>
                                 </div>
                             </div>
                         ` : `
                             <div class="bg-blue-900/10 border border-blue-900/50 p-8 rounded-3xl flex flex-col items-start gap-4 shadow-sm">
                                 <div class="flex gap-4 items-start w-full">
-                                    <div class="bg-blue-600 text-white w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0">
-                                        <i class="fas fa-lock"></i>
-                                    </div>
+                                    <div class="bg-blue-600 text-white w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"><i class="fas fa-lock"></i></div>
                                     <div class="w-full">
                                         <h3 class="font-black text-blue-400 mb-2">Secciones Protegidas</h3>
-                                        <p class="text-sm text-slate-300 leading-relaxed mb-4">
-                                            Tu Experiencia Laboral, Educación, Cursos y Certificaciones son validadas por la plataforma y solo pueden ser modificadas por el administrador.
-                                        </p>
-                                        <button type="button" onclick="document.getElementById('solicitud-box').classList.toggle('hidden')" class="bg-blue-600 text-white px-5 py-2.5 rounded-xl text-xs font-bold hover:bg-blue-500 transition-colors shadow-md">
-                                            <i class="fas fa-paper-plane mr-1"></i> Enviar Solicitud de Actualización
-                                        </button>
+                                        <p class="text-sm text-slate-300 leading-relaxed mb-4">Tu Experiencia Laboral, Educación, Cursos y Certificaciones son validadas por la plataforma y solo pueden ser modificadas por el administrador.</p>
+                                        <button type="button" onclick="document.getElementById('solicitud-box').classList.toggle('hidden')" class="bg-blue-600 text-white px-5 py-2.5 rounded-xl text-xs font-bold hover:bg-blue-500 transition-colors shadow-md"><i class="fas fa-paper-plane mr-1"></i> Enviar Solicitud de Actualización</button>
                                     </div>
                                 </div>
-                                
                                 <div id="solicitud-box" class="hidden w-full mt-4 bg-slate-900 p-6 rounded-2xl border border-slate-700 shadow-inner">
                                     <label class="block text-xs font-bold text-slate-400 mb-2">Detalles de la modificación:</label>
-                                    <textarea id="sol-texto" rows="4" class="w-full p-4 bg-slate-800 border border-slate-700 rounded-xl mb-4 text-sm text-white outline-none focus:ring-2 focus:ring-blue-500" placeholder="Ej: Por favor añadir a mi experiencia... o añadir la Habilidad: Trabajo en Equipo"></textarea>
-                                    
+                                    <textarea id="sol-texto" rows="4" class="w-full p-4 bg-slate-800 border border-slate-700 rounded-xl mb-4 text-sm text-white outline-none focus:ring-2 focus:ring-blue-500" placeholder="Ej: Por favor añadir a mi experiencia..."></textarea>
                                     <label class="block text-xs font-bold text-slate-400 mb-2">URL del Certificado (Opcional):</label>
-                                    <input type="url" id="sol-url" class="w-full p-4 bg-slate-800 border border-slate-700 rounded-xl mb-6 text-sm text-white outline-none focus:ring-2 focus:ring-blue-500" placeholder="Enlace a tu certificado, Drive, etc.">
-                                    
-                                    <button type="button" onclick="enviarSolicitud('${targetUser.email}', '${targetUser.nombre}')" class="bg-slate-700 border border-slate-600 text-white px-6 py-3 rounded-xl text-sm font-bold hover:bg-slate-600 transition-colors w-full shadow-lg">
-                                        Enviar a Revisión
-                                    </button>
+                                    <input type="url" id="sol-url" class="w-full p-4 bg-slate-800 border border-slate-700 rounded-xl mb-6 text-sm text-white outline-none focus:ring-2 focus:ring-blue-500" placeholder="Enlace a tu certificado">
+                                    <button type="button" onclick="enviarSolicitud('${targetUser.email}', '${targetUser.nombre}')" class="bg-slate-700 border border-slate-600 text-white px-6 py-3 rounded-xl text-sm font-bold hover:bg-slate-600 transition-colors w-full shadow-lg">Enviar a Revisión</button>
                                 </div>
                             </div>
                         `}
-
                         <button id="btn-submit" type="submit" class="w-full ${isFullAccess ? 'bg-red-600 shadow-red-900/50 hover:bg-red-500' : 'bg-blue-600 shadow-blue-900/50 hover:bg-blue-500'} text-white py-6 rounded-3xl font-black text-xl shadow-2xl transition-all uppercase tracking-widest">
                             ${isFullAccess ? 'Guardar Cambios como Admin' : 'Actualizar Mi Perfil Básico'}
                         </button>
@@ -572,18 +494,13 @@
 
             if (isFullAccess) {
                 setupDynamicButtons();
-                
                 const btnAddHab = document.getElementById('btn-add-hab');
                 if(btnAddHab) {
                     btnAddHab.onclick = () => {
                         const container = document.getElementById('hab-container');
                         const div = document.createElement('div');
                         div.className = "grid grid-cols-1 md:grid-cols-2 gap-2 p-4 bg-slate-900 rounded-2xl border border-slate-700 relative animate-fade-in";
-                        div.innerHTML = `
-                            <input type="text" placeholder="Habilidad (Ej: Liderazgo)" class="p-2 border border-slate-700 bg-slate-800 rounded-lg text-sm text-white hab-nom outline-none focus:border-blue-500">
-                            <input type="text" placeholder="Descripción breve" class="p-2 border border-slate-700 bg-slate-800 rounded-lg text-sm text-white hab-des outline-none focus:border-blue-500">
-                            <button type="button" onclick="this.parentElement.remove()" class="absolute -top-2 -right-2 bg-red-600 text-white w-6 h-6 rounded-full text-xs shadow">×</button>
-                        `;
+                        div.innerHTML = `<input type="text" placeholder="Habilidad (Ej: Liderazgo)" class="p-2 border border-slate-700 bg-slate-800 rounded-lg text-sm text-white hab-nom outline-none focus:border-blue-500"><input type="text" placeholder="Descripción breve" class="p-2 border border-slate-700 bg-slate-800 rounded-lg text-sm text-white hab-des outline-none focus:border-blue-500"><button type="button" onclick="this.parentElement.remove()" class="absolute -top-2 -right-2 bg-red-600 text-white w-6 h-6 rounded-full text-xs shadow">×</button>`;
                         container.appendChild(div);
                     };
                 }
@@ -597,24 +514,9 @@
 
                 try {
                     const payload = {
-                        nombre: document.getElementById('cv-nombre').value,
-                        profesion: document.getElementById('cv-prof').value,
-                        direccion: document.getElementById('cv-dir').value,
-                        telefono: document.getElementById('cv-tel').value,
-                        email: targetUser.email,
-                        foto: document.getElementById('cv-foto').value, 
-                        redes: {
-                            linkedin: document.getElementById('cv-lin').value,
-                            facebook: document.getElementById('cv-fb').value,
-                            instagram: document.getElementById('cv-ig').value
-                        },
-                        objetivo: document.getElementById('cv-obj').value,
-                        info_personal: {
-                            cedula: document.getElementById('cv-ced').value,
-                            estado_civil: document.getElementById('cv-civil').value,
-                            nacionalidad: document.getElementById('cv-nac').value,
-                            nacimiento: document.getElementById('cv-birth').value
-                        },
+                        nombre: document.getElementById('cv-nombre').value, profesion: document.getElementById('cv-prof').value, direccion: document.getElementById('cv-dir').value, telefono: document.getElementById('cv-tel').value, email: targetUser.email, foto: document.getElementById('cv-foto').value, 
+                        redes: { linkedin: document.getElementById('cv-lin').value, facebook: document.getElementById('cv-fb').value, instagram: document.getElementById('cv-ig').value },
+                        objetivo: document.getElementById('cv-obj').value, info_personal: { cedula: document.getElementById('cv-ced').value, estado_civil: document.getElementById('cv-civil').value, nacionalidad: document.getElementById('cv-nac').value, nacimiento: document.getElementById('cv-birth').value },
                         timestamp: serverTimestamp()
                     };
 
@@ -624,37 +526,18 @@
                             const data = [];
                             for (let row of rows) {
                                 const item = {};
-                                for (let i = 0; i < fieldsCount; i++) {
-                                    item[`f${i}`] = row.querySelector(`.${id}-field-${i}`).value;
-                                }
+                                for (let i = 0; i < fieldsCount; i++) item[`f${i}`] = row.querySelector(`.${id}-field-${i}`).value;
                                 if (hasImage) item.img = row.querySelector(`.${id}-img-url`).value;
                                 data.push(item);
                             }
                             return data;
                         };
 
-                        payload.experiencia = getSectionData('exp', 4, false);
-                        payload.educacion = getSectionData('edu', 3, true);
-                        payload.cursos = getSectionData('cur', 2, true);
-                        payload.diplomados = getSectionData('dip', 2, true);
-                        payload.referencias = getSectionData('ref', 4, false);
-                        
-                        payload.habilidades_lista = Array.from(document.querySelectorAll('#hab-container > div')).map(row => ({
-                            nombre: row.querySelector('.hab-nom').value,
-                            desc: row.querySelector('.hab-des').value
-                        }));
-                        
-                        payload.idiomas = document.getElementById('cv-idi').value;
-                        payload.intereses = document.getElementById('cv-int').value;
+                        payload.experiencia = getSectionData('exp', 4, false); payload.educacion = getSectionData('edu', 3, true); payload.cursos = getSectionData('cur', 2, true); payload.diplomados = getSectionData('dip', 2, true); payload.referencias = getSectionData('ref', 4, false);
+                        payload.habilidades_lista = Array.from(document.querySelectorAll('#hab-container > div')).map(row => ({ nombre: row.querySelector('.hab-nom').value, desc: row.querySelector('.hab-des').value }));
+                        payload.idiomas = document.getElementById('cv-idi').value; payload.intereses = document.getElementById('cv-int').value;
                     } else {
-                        payload.experiencia = cv?.experiencia || [];
-                        payload.educacion = cv?.educacion || [];
-                        payload.cursos = cv?.cursos || [];
-                        payload.diplomados = cv?.diplomados || [];
-                        payload.referencias = cv?.referencias || [];
-                        payload.habilidades_lista = cv?.habilidades_lista || [];
-                        payload.idiomas = cv?.idiomas || '';
-                        payload.intereses = cv?.intereses || '';
+                        payload.experiencia = cv?.experiencia || []; payload.educacion = cv?.educacion || []; payload.cursos = cv?.cursos || []; payload.diplomados = cv?.diplomados || []; payload.referencias = cv?.referencias || []; payload.habilidades_lista = cv?.habilidades_lista || []; payload.idiomas = cv?.idiomas || ''; payload.intereses = cv?.intereses || '';
                     }
 
                     if (cv) await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'cvs', cv.id), payload);
@@ -674,9 +557,7 @@
                 <div class="bg-slate-800 p-8 rounded-3xl border border-slate-700 shadow-sm">
                     <div class="flex justify-between items-center mb-6">
                         <h3 class="font-black text-blue-400 text-xs uppercase">${title}</h3>
-                        <button type="button" data-section="${id}" data-fields='${JSON.stringify(placeholders)}' data-image="${hasImage}" class="btn-add-row text-xs bg-slate-700 border border-slate-600 text-white px-4 py-2 rounded-full hover:bg-blue-600 transition-colors">
-                            + Añadir Item
-                        </button>
+                        <button type="button" data-section="${id}" data-fields='${JSON.stringify(placeholders)}' data-image="${hasImage}" class="btn-add-row text-xs bg-slate-700 border border-slate-600 text-white px-4 py-2 rounded-full hover:bg-blue-600 transition-colors">+ Añadir Item</button>
                     </div>
                     <div id="${id}-container" class="space-y-4">
                         ${data?.map(item => `
@@ -709,8 +590,43 @@
             });
         }
 
-        // --- FUNCIÓN PARA DESCARGAR EL CV EN PDF PROFESIONAL ---
-        window.descargarPDF = (nombreCandidato) => {
+        async function subirFotoCloudinary(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const cloudName = 'programmer-app-web'; 
+            const uploadPreset = 'lorhels-CV'; 
+
+            if (cloudName === 'TU_CLOUD_NAME') {
+                return showToast("⚠️ Debes configurar tu Cloud Name en el código.", "error");
+            }
+
+            const overlay = document.getElementById('upload-overlay');
+            overlay.classList.remove('hidden');
+
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('upload_preset', uploadPreset);
+
+            try {
+                const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, { method: 'POST', body: formData });
+                const data = await response.json();
+                
+                if (data.secure_url) {
+                    document.getElementById('cv-foto').value = data.secure_url;
+                    document.getElementById('cv-foto-preview').src = data.secure_url;
+                    showToast("¡Foto de perfil actualizada con éxito!", "success");
+                } else { throw new Error(data.error?.message || "Error desconocido al subir."); }
+            } catch (error) {
+                console.error("Error subiendo foto:", error);
+                showToast("Hubo un error al subir la foto. Intenta con otra imagen.", "error");
+            } finally {
+                overlay.classList.add('hidden');
+                e.target.value = ''; 
+            }
+        }
+
+        function descargarPDF(nombreCandidato) {
             const elementoCV = document.querySelector('.cv-container');
             const zonaBotones = elementoCV.querySelector('.no-print');
             zonaBotones.style.display = 'none';
@@ -730,19 +646,15 @@
                 document.body.style.cursor = 'default';
                 showToast("PDF descargado correctamente", "success");
             });
-        };
+        }
 
-        window.loadCV = async (cvId) => {
+        async function loadCV(cvId) {
             const snap = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'cvs', cvId));
-            if (!snap.exists()) {
-                showToast("Perfil no encontrado.", "error");
-                return;
-            }
+            if (!snap.exists()) return showToast("Perfil no encontrado.", "error");
             const d = snap.data();
 
             document.getElementById('app-container').innerHTML = `
                 <div class="max-w-5xl mx-auto cv-container bg-slate-800 text-slate-200 shadow-2xl rounded-3xl overflow-hidden mb-20 animate-fade-in border border-slate-700">
-                    
                     <div class="bg-gradient-to-r from-slate-950 to-blue-900 text-white p-12 relative flex flex-col md:flex-row items-center md:items-start gap-8 border-b border-blue-900/50">
                         <div class="absolute top-4 right-4 no-print flex gap-2 items-center">
                              <button onclick="window.print()" title="Imprimir" class="text-white/50 hover:text-white p-2 transition-colors"><i class="fas fa-print text-xl"></i></button>
@@ -750,19 +662,15 @@
                                  <i class="fas fa-file-pdf text-lg"></i> DESCARGAR PDF
                              </button>
                         </div>
-                        
                         ${d.foto ? `<img src="${d.foto}" class="w-32 h-32 md:w-40 md:h-40 rounded-full object-cover border-4 border-slate-800 shadow-2xl flex-shrink-0" crossorigin="anonymous">` : ''}
-                        
                         <div class="text-center md:text-left w-full mt-4 md:mt-0">
                             <h2 class="text-5xl font-black uppercase tracking-tighter">${d.nombre || 'Sin Nombre'}</h2>
                             <p class="text-blue-400 font-bold text-xl mt-2 tracking-wide">${d.profesion || ''}</p>
-                            
                             <div class="mt-6 flex flex-wrap justify-center md:justify-start gap-5 text-sm opacity-90 font-light">
                                 ${d.telefono ? `<span><i class="fas fa-phone mr-2 text-blue-400"></i>${d.telefono}</span>` : ''}
                                 ${d.email ? `<span><i class="fas fa-envelope mr-2 text-blue-400"></i>${d.email}</span>` : ''}
                                 ${d.direccion ? `<span><i class="fas fa-map-marker-alt mr-2 text-blue-400"></i>${d.direccion}</span>` : ''}
                             </div>
-                            
                             <div class="mt-6 flex justify-center md:justify-start gap-5 text-2xl no-print">
                                 ${d.redes?.linkedin ? `<a href="${d.redes.linkedin}" target="_blank" class="text-white/60 hover:text-blue-400 transition-colors"><i class="fab fa-linkedin"></i></a>` : ''}
                                 ${d.redes?.facebook ? `<a href="${d.redes.facebook}" target="_blank" class="text-white/60 hover:text-blue-400 transition-colors"><i class="fab fa-facebook"></i></a>` : ''}
@@ -772,7 +680,6 @@
                     </div>
 
                     <div class="p-12 grid grid-cols-1 lg:grid-cols-3 gap-12 bg-slate-800">
-                        
                         <div class="lg:col-span-1 space-y-10">
                             <section>
                                 <h4 class="text-xs font-black uppercase tracking-widest text-blue-400 mb-4 border-l-4 border-blue-500 pl-3">Datos Personales</h4>
@@ -783,131 +690,41 @@
                                     ${d.info_personal?.nacimiento ? `<li><strong class="text-slate-200">F. Nacimiento:</strong><br> ${d.info_personal.nacimiento}</li>` : ''}
                                 </ul>
                             </section>
-
-                            ${d.habilidades_lista && d.habilidades_lista.length > 0 ? `
-                            <section>
-                                <h4 class="text-xs font-black uppercase tracking-widest text-blue-400 mb-4 border-l-4 border-blue-500 pl-3">Habilidades</h4>
-                                <div class="space-y-4">
-                                    ${d.habilidades_lista.map(h => `
-                                        <div>
-                                            <p class="text-[11px] font-bold text-white uppercase">${h.nombre}</p>
-                                            <p class="text-[10px] text-slate-400 mt-1">${h.desc}</p>
-                                        </div>
-                                    `).join('')}
-                                </div>
-                            </section>` : ''}
-
-                            ${d.idiomas ? `
-                            <section>
-                                <h4 class="text-xs font-black uppercase tracking-widest text-blue-400 mb-4 border-l-4 border-blue-500 pl-3">Idiomas</h4>
-                                <p class="text-xs text-slate-400 leading-relaxed">${d.idiomas}</p>
-                            </section>` : ''}
-
-                            ${d.intereses ? `
-                            <section>
-                                <h4 class="text-xs font-black uppercase tracking-widest text-blue-400 mb-4 border-l-4 border-blue-500 pl-3">Intereses</h4>
-                                <p class="text-xs text-slate-400 leading-relaxed">${d.intereses}</p>
-                            </section>` : ''}
+                            ${d.habilidades_lista && d.habilidades_lista.length > 0 ? `<section><h4 class="text-xs font-black uppercase tracking-widest text-blue-400 mb-4 border-l-4 border-blue-500 pl-3">Habilidades</h4><div class="space-y-4">${d.habilidades_lista.map(h => `<div><p class="text-[11px] font-bold text-white uppercase">${h.nombre}</p><p class="text-[10px] text-slate-400 mt-1">${h.desc}</p></div>`).join('')}</div></section>` : ''}
+                            ${d.idiomas ? `<section><h4 class="text-xs font-black uppercase tracking-widest text-blue-400 mb-4 border-l-4 border-blue-500 pl-3">Idiomas</h4><p class="text-xs text-slate-400 leading-relaxed">${d.idiomas}</p></section>` : ''}
+                            ${d.intereses ? `<section><h4 class="text-xs font-black uppercase tracking-widest text-blue-400 mb-4 border-l-4 border-blue-500 pl-3">Intereses</h4><p class="text-xs text-slate-400 leading-relaxed">${d.intereses}</p></section>` : ''}
                         </div>
 
                         <div class="lg:col-span-2 space-y-12">
-                            
-                            ${d.objetivo ? `
-                            <section>
-                                <h4 class="text-xs font-black uppercase tracking-widest text-blue-400 border-b border-slate-700 pb-2 mb-4">Perfil Profesional</h4>
-                                <p class="text-sm text-slate-300 leading-relaxed text-justify">${d.objetivo}</p>
-                            </section>` : ''}
-
+                            ${d.objetivo ? `<section><h4 class="text-xs font-black uppercase tracking-widest text-blue-400 border-b border-slate-700 pb-2 mb-4">Perfil Profesional</h4><p class="text-sm text-slate-300 leading-relaxed text-justify">${d.objetivo}</p></section>` : ''}
                             <section>
                                 <h4 class="text-xs font-black uppercase tracking-widest text-blue-400 border-b border-slate-700 pb-2 mb-6">Experiencia Laboral</h4>
-                                <div class="space-y-6">
-                                    ${d.experiencia && d.experiencia.length > 0 ? d.experiencia.map(e => `
-                                        <div class="pl-4 border-l-2 border-slate-600 hover:border-blue-500 transition-colors">
-                                            <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1">
-                                                <p class="font-bold text-white text-sm">${e.f1}</p>
-                                                <span class="text-blue-400 text-[10px] font-bold uppercase bg-blue-900/30 border border-blue-800 px-2 py-1 rounded w-fit">${e.f2}</span>
-                                            </div>
-                                            <p class="text-xs font-semibold text-slate-400 mt-1"><i class="fas fa-building mr-1"></i> ${e.f0}</p>
-                                            <p class="text-xs text-slate-300 mt-2 leading-relaxed">${e.f3}</p>
-                                        </div>
-                                    `).join('') : '<p class="text-xs text-slate-500">Sin experiencia registrada</p>'}
-                                </div>
+                                <div class="space-y-6">${d.experiencia?.map(e => `<div class="pl-4 border-l-2 border-slate-600 hover:border-blue-500 transition-colors"><div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1"><p class="font-bold text-white text-sm">${e.f1}</p><span class="text-blue-400 text-[10px] font-bold uppercase bg-blue-900/30 border border-blue-800 px-2 py-1 rounded w-fit">${e.f2}</span></div><p class="text-xs font-semibold text-slate-400 mt-1"><i class="fas fa-building mr-1"></i> ${e.f0}</p><p class="text-xs text-slate-300 mt-2 leading-relaxed">${e.f3}</p></div>`).join('') || '<p class="text-xs text-slate-500">Sin experiencia registrada</p>'}</div>
                             </section>
-
                             <section>
                                 <h4 class="text-xs font-black uppercase tracking-widest text-blue-400 border-b border-slate-700 pb-2 mb-6">Educación Académica</h4>
-                                <div class="space-y-4">
-                                    ${d.educacion && d.educacion.length > 0 ? d.educacion.map(e => `
-                                        <div class="bg-slate-900 p-5 rounded-xl border border-slate-700">
-                                            <p class="text-sm font-bold text-white">${e.f1}</p>
-                                            <p class="text-[11px] text-slate-400 mt-2 flex flex-wrap gap-3">
-                                                <span><i class="fas fa-university mr-1"></i> ${e.f0}</span>
-                                                <span><i class="fas fa-graduation-cap mr-1"></i> ${e.f2}</span>
-                                            </p>
-                                            ${e.img ? `<a href="${e.img}" target="_blank" class="inline-block mt-3 text-[10px] bg-blue-900/30 text-blue-400 border border-blue-800 px-3 py-1.5 rounded-lg font-bold hover:bg-blue-900/50 no-print transition-colors"><i class="fas fa-external-link-alt mr-1"></i> Ver Certificado</a>` : ''}
-                                        </div>
-                                    `).join('') : '<p class="text-xs text-slate-500">Sin registros</p>'}
-                                </div>
+                                <div class="space-y-4">${d.educacion?.map(e => `<div class="bg-slate-900 p-5 rounded-xl border border-slate-700"><p class="text-sm font-bold text-white">${e.f1}</p><p class="text-[11px] text-slate-400 mt-2 flex flex-wrap gap-3"><span><i class="fas fa-university mr-1"></i> ${e.f0}</span><span><i class="fas fa-graduation-cap mr-1"></i> ${e.f2}</span></p>${e.img ? `<a href="${e.img}" target="_blank" class="inline-block mt-3 text-[10px] bg-blue-900/30 text-blue-400 border border-blue-800 px-3 py-1.5 rounded-lg font-bold hover:bg-blue-900/50 no-print transition-colors"><i class="fas fa-external-link-alt mr-1"></i> Ver Certificado</a>` : ''}</div>`).join('') || '<p class="text-xs text-slate-500">Sin registros</p>'}</div>
                             </section>
-
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-10">
-                                <section>
-                                    <h4 class="text-xs font-black uppercase tracking-widest text-blue-400 border-b border-slate-700 pb-2 mb-5">Cursos y Talleres</h4>
-                                    <div class="space-y-5">
-                                        ${d.cursos && d.cursos.length > 0 ? d.cursos.map(c => `
-                                            <div class="relative pl-3 border-l border-slate-600">
-                                                <p class="text-[12px] font-bold text-white leading-tight">${c.f0}</p>
-                                                <p class="text-[10px] text-slate-400 mt-1"><i class="fas fa-map-marker-alt mr-1"></i> ${c.f1}</p>
-                                                ${c.img ? `<a href="${c.img}" target="_blank" class="inline-block mt-2 text-[10px] text-blue-400 font-bold hover:underline no-print"><i class="fas fa-certificate mr-1"></i> Ver Credencial</a>` : ''}
-                                            </div>
-                                        `).join('') : '<p class="text-xs text-slate-500">No especificado</p>'}
-                                    </div>
-                                </section>
-
-                                <section>
-                                    <h4 class="text-xs font-black uppercase tracking-widest text-blue-400 border-b border-slate-700 pb-2 mb-5">Diplomados</h4>
-                                    <div class="space-y-5">
-                                        ${d.diplomados && d.diplomados.length > 0 ? d.diplomados.map(c => `
-                                            <div class="relative pl-3 border-l border-slate-600">
-                                                <p class="text-[12px] font-bold text-white leading-tight">${c.f0}</p>
-                                                <p class="text-[10px] text-slate-400 mt-1"><i class="fas fa-map-marker-alt mr-1"></i> ${c.f1}</p>
-                                                ${c.img ? `<a href="${c.img}" target="_blank" class="inline-block mt-2 text-[10px] text-blue-400 font-bold hover:underline no-print"><i class="fas fa-certificate mr-1"></i> Ver Credencial</a>` : ''}
-                                            </div>
-                                        `).join('') : '<p class="text-xs text-slate-500">No especificado</p>'}
-                                    </div>
-                                </section>
+                                <section><h4 class="text-xs font-black uppercase tracking-widest text-blue-400 border-b border-slate-700 pb-2 mb-5">Cursos y Talleres</h4><div class="space-y-5">${d.cursos?.map(c => `<div class="relative pl-3 border-l border-slate-600"><p class="text-[12px] font-bold text-white leading-tight">${c.f0}</p><p class="text-[10px] text-slate-400 mt-1"><i class="fas fa-map-marker-alt mr-1"></i> ${c.f1}</p>${c.img ? `<a href="${c.img}" target="_blank" class="inline-block mt-2 text-[10px] text-blue-400 font-bold hover:underline no-print"><i class="fas fa-certificate mr-1"></i> Ver Credencial</a>` : ''}</div>`).join('') || '<p class="text-xs text-slate-500">No especificado</p>'}</div></section>
+                                <section><h4 class="text-xs font-black uppercase tracking-widest text-blue-400 border-b border-slate-700 pb-2 mb-5">Diplomados</h4><div class="space-y-5">${d.diplomados?.map(c => `<div class="relative pl-3 border-l border-slate-600"><p class="text-[12px] font-bold text-white leading-tight">${c.f0}</p><p class="text-[10px] text-slate-400 mt-1"><i class="fas fa-map-marker-alt mr-1"></i> ${c.f1}</p>${c.img ? `<a href="${c.img}" target="_blank" class="inline-block mt-2 text-[10px] text-blue-400 font-bold hover:underline no-print"><i class="fas fa-certificate mr-1"></i> Ver Credencial</a>` : ''}</div>`).join('') || '<p class="text-xs text-slate-500">No especificado</p>'}</div></section>
                             </div>
-
                             <section>
                                 <h4 class="text-xs font-black uppercase tracking-widest text-blue-400 border-b border-slate-700 pb-2 mb-6 mt-6">Referencias Laborales</h4>
-                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                    ${d.referencias && d.referencias.length > 0 ? d.referencias.map(r => `
-                                        <div class="bg-slate-900 p-4 rounded-xl border border-slate-700 hover:border-blue-500 transition-all">
-                                            <p class="text-[13px] font-black text-white">${r.f0}</p>
-                                            <p class="text-[11px] text-slate-400 mt-1">${r.f2}</p>
-                                            <p class="text-[10px] text-slate-500 mt-0.5"><i class="fas fa-building mr-1 text-slate-600"></i> ${r.f1}</p>
-                                            <p class="text-[12px] text-blue-400 font-bold mt-3 bg-blue-900/30 border border-blue-800 w-fit px-2 py-1 rounded"><i class="fas fa-phone mr-1"></i> ${r.f3}</p>
-                                        </div>
-                                    `).join('') : '<p class="text-xs text-slate-500">Sin referencias</p>'}
-                                </div>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">${d.referencias?.map(r => `<div class="bg-slate-900 p-4 rounded-xl border border-slate-700 hover:border-blue-500 transition-all"><p class="text-[13px] font-black text-white">${r.f0}</p><p class="text-[11px] text-slate-400 mt-1">${r.f2}</p><p class="text-[10px] text-slate-500 mt-0.5"><i class="fas fa-building mr-1 text-slate-600"></i> ${r.f1}</p><p class="text-[12px] text-blue-400 font-bold mt-3 bg-blue-900/30 border border-blue-800 w-fit px-2 py-1 rounded"><i class="fas fa-phone mr-1"></i> ${r.f3}</p></div>`).join('') || '<p class="text-xs text-slate-500">Sin referencias</p>'}</div>
                             </section>
-
                         </div>
                     </div>
                 </div>`;
-        };
+        }
 
-        // --- CONSOLA DE ADMINISTRADOR ---
-        window.renderAdminPanel = async () => {
+        async function renderAdminPanel() {
             const container = document.getElementById('app-container');
             container.innerHTML = `
                 <div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8 animate-fade-in py-8">
                     <div class="bg-slate-800 p-6 rounded-3xl border border-slate-700 shadow-sm h-fit">
                         <h2 class="text-lg font-black mb-4 text-white border-b border-slate-700 pb-4"><i class="fas fa-users text-blue-500 mr-2"></i> Usuarios</h2>
-                        <div class="relative mb-4">
-                            <i class="fas fa-search absolute left-3 top-3 text-slate-500 text-xs"></i>
-                            <input type="text" id="buscador-admin" placeholder="Buscar usuario..." class="w-full pl-8 p-2 bg-slate-900 border border-slate-700 rounded-lg text-xs text-white outline-none focus:border-blue-500" oninput="filtrarAdmin(this.value)">
-                        </div>
+                        <div class="relative mb-4"><i class="fas fa-search absolute left-3 top-3 text-slate-500 text-xs"></i><input type="text" id="buscador-admin" placeholder="Buscar usuario..." class="w-full pl-8 p-2 bg-slate-900 border border-slate-700 rounded-lg text-xs text-white outline-none focus:border-blue-500" oninput="filtrarAdmin(this.value)"></div>
                         <div id="admin-list" class="space-y-3 max-h-[500px] overflow-y-auto pr-2"><p class="text-center text-slate-500 text-xs">Cargando...</p></div>
                     </div>
                     <div class="bg-slate-800 p-6 rounded-3xl border border-slate-700 shadow-sm h-fit">
@@ -918,8 +735,7 @@
                         <h2 class="text-lg font-black mb-6 text-white border-b border-slate-700 pb-4"><i class="fas fa-gem text-blue-500 mr-2"></i> Pagos PRO</h2>
                         <div id="pagos-list" class="space-y-4 max-h-[500px] overflow-y-auto pr-2"></div>
                     </div>
-                </div>
-            `;
+                </div>`;
 
             window.allAdminUsers = [];
             const users = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'usuarios_sistema'));
@@ -938,10 +754,9 @@
                                 <button onclick="marcarSolicitudLista('${d.id}')" class="bg-emerald-900/30 text-emerald-400 border border-emerald-800 px-2 py-1 rounded-lg text-[10px] font-bold hover:bg-emerald-800 transition-colors"><i class="fas fa-check mr-1"></i> Listo</button>
                                 <button onclick="adminProxy('${s.nombre}', '${s.email}', 'usuario')" class="bg-blue-900/30 text-blue-400 border border-blue-800 px-2 py-1 rounded-lg text-[10px] font-bold hover:bg-blue-800 transition-colors"><i class="fas fa-edit mr-1"></i> Editar</button>
                             </div>
-                            <p class="text-xs font-bold text-amber-400 mb-1">${s.nombre}</p>
+                            <p class="text-xs font-bold text-amber-500 mb-1">${s.nombre}</p>
                             <div class="bg-slate-800 p-2 rounded-lg border border-slate-700 mb-2 text-[10px] text-slate-300 whitespace-pre-wrap">${s.texto}</div>
-                        </div>
-                    `;
+                        </div>`;
                 }
             });
             if(solList.innerHTML === '') solList.innerHTML = '<p class="text-xs text-slate-500 text-center py-5">No hay solicitudes.</p>';
@@ -957,17 +772,14 @@
                             <span class="absolute top-3 right-3 bg-blue-900/50 border border-blue-800 text-blue-400 text-[9px] font-black px-2 py-1 rounded uppercase">${p.tipo_usuario}</span>
                             <p class="text-sm font-black text-white mb-1">${p.nombre}</p>
                             <p class="text-[10px] text-slate-400 mb-4">${p.email} • ${p.fecha}</p>
-                            <button onclick="aprobarPlanPRO('${d.id}', '${p.usuario_id}')" class="w-full bg-emerald-600 text-white hover:bg-emerald-500 px-3 py-2 rounded-xl flex items-center justify-center gap-2 text-xs font-bold transition-colors shadow-md">
-                                <i class="fas fa-check-double"></i> Aprobar Cuenta PRO
-                            </button>
-                        </div>
-                    `;
+                            <button onclick="aprobarPlanPRO('${d.id}', '${p.usuario_id}')" class="w-full bg-emerald-600 text-white hover:bg-emerald-500 px-3 py-2 rounded-xl flex items-center justify-center gap-2 text-xs font-bold transition-colors shadow-md"><i class="fas fa-check-double"></i> Aprobar Cuenta PRO</button>
+                        </div>`;
                 }
             });
             if(pagosList.innerHTML === '') pagosList.innerHTML = '<p class="text-xs text-slate-500 text-center py-5">Todo al día. Sin pagos pendientes.</p>';
-        };
+        }
 
-        window.dibujarListaAdmin = (lista) => {
+        function dibujarListaAdmin(lista) {
             const listContainer = document.getElementById('admin-list');
             listContainer.innerHTML = '';
             lista.forEach(u => {
@@ -980,22 +792,22 @@
                         <button onclick="adminProxy('${u.nombre}', '${u.email}', '${u.tipo}')" class="bg-slate-700 text-white border border-slate-600 px-3 py-1.5 rounded-lg text-[10px] font-bold hover:bg-blue-600 w-full transition-colors">Editar Perfil</button>
                     </div>`;
             });
-        };
+        }
 
-        window.filtrarAdmin = (query) => {
+        function filtrarAdmin(query) {
             const q = query.toLowerCase();
             dibujarListaAdmin(window.allAdminUsers.filter(u => (u.nombre && u.nombre.toLowerCase().includes(q)) || (u.email && u.email.toLowerCase().includes(q))));
-        };
+        }
 
-        window.marcarSolicitudLista = async (id) => {
+        async function marcarSolicitudLista(id) {
             if(confirm("¿Estás seguro de marcar esta solicitud como completada?")) {
                 await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'solicitudes', id), { estado: 'completado' });
                 document.getElementById('sol-'+id).remove();
                 showToast("Solicitud completada", "success");
             }
-        };
+        }
 
-        window.aprobarPlanPRO = async (reqId, userId) => {
+        async function aprobarPlanPRO(reqId, userId) {
             if(confirm("¿Confirmas que recibiste el pago de este usuario por WhatsApp y deseas activarle el plan PRO por 30 días?")) {
                 const fechaExpiracion = new Date();
                 fechaExpiracion.setDate(fechaExpiracion.getDate() + 30);
@@ -1004,38 +816,215 @@
                 document.getElementById('pago-'+reqId).remove();
                 showToast("¡Cuenta PRO activada!", "success");
             }
-        };
+        }
 
-        window.adminProxy = (nombre, email, tipo) => {
+        function adminProxy(nombre, email, tipo) {
             const targetUser = {nombre, email, tipo};
             if(tipo === 'empresa') renderEmpresaDashboard(targetUser); 
             else renderDashboard(targetUser, true);
-        };
+        }
 
-        window.enviarSolicitud = async (email, nombre) => { 
+        async function enviarSolicitud(email, nombre) { 
             const texto = document.getElementById('sol-texto').value; 
             const link = document.getElementById('sol-url').value; 
             if(!texto.trim()) return showToast("Debes escribir detalles de lo que quieres modificar.", "error"); 
-            
             try { 
                 await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'solicitudes'), { email, nombre, texto, link, estado: 'pendiente', fecha: new Date().toLocaleDateString(), timestamp: serverTimestamp() }); 
                 showToast("¡Enviada con éxito! El administrador la revisará pronto.", "success"); 
                 document.getElementById('solicitud-box').classList.add('hidden'); 
             } catch(e) { showToast("Error al enviar la solicitud.", "error"); } 
-        };
+        }
 
+        async function showVisitas(cvId) {
+            if (currentUser && currentUser.tipo === 'usuario' && (!currentUser.plan || currentUser.plan === 'gratis')) {
+                renderPaywall('usuario');
+                return; 
+            }
+
+            const visitasSnap = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'visitas'));
+            let misVisitas = [];
+            visitasSnap.forEach(d => {
+                const v = d.data();
+                if (v.cv_id === cvId) misVisitas.push(v);
+            });
+            misVisitas.reverse();
+
+            const modal = document.createElement('div');
+            modal.className = "fixed inset-0 bg-slate-950/90 flex items-center justify-center z-[100] p-4 backdrop-blur-sm animate-fade-in";
+            
+            let listHTML = misVisitas.length === 0 ? '<p class="text-slate-500 py-10 text-center">Aún no hay visitas registradas.</p>' : 
+                misVisitas.map(v => `
+                    <div class="bg-slate-900 p-4 rounded-xl border border-slate-700 mb-3 text-left hover:border-blue-500 transition-colors">
+                        <p class="font-bold text-white"><i class="fas fa-building text-blue-500 mr-2"></i>${v.empresa_nombre || 'Empresa Anónima'}</p>
+                        <p class="text-[11px] text-slate-400 mt-1"><i class="fas fa-envelope mr-2"></i>${v.empresa_email || 'Sin correo'}</p>
+                        <p class="text-[10px] text-slate-500 mt-2 font-semibold"><i class="fas fa-clock mr-1"></i>${v.fecha || 'Fecha desconocida'}</p>
+                    </div>
+                `).join('');
+
+            modal.innerHTML = `
+                <div class="bg-slate-800 p-8 rounded-3xl text-center shadow-2xl max-w-md w-full border border-slate-700 relative flex flex-col max-h-[85vh]">
+                    <button onclick="this.closest('.fixed').remove()" class="absolute top-4 right-4 text-slate-400 hover:text-red-500 transition-colors"><i class="fas fa-times text-xl"></i></button>
+                    <div class="w-16 h-16 bg-blue-900/30 text-blue-500 rounded-full flex items-center justify-center mx-auto mb-4 border border-blue-800"><i class="fas fa-chart-line text-2xl"></i></div>
+                    <h3 class="font-black text-2xl mb-1 text-white">Visualizaciones</h3>
+                    <p class="text-sm text-slate-400 mb-6">Empresas que han escaneado tu perfil.</p>
+                    <div class="overflow-y-auto pr-2 flex-1">${listHTML}</div>
+                </div>`;
+            document.body.appendChild(modal);
+        }
+
+        function renderPaywall(type) {
+            const container = document.getElementById('app-container');
+            const isEmpresa = type === 'empresa';
+            const tituloPro = isEmpresa ? 'Reclutador Premium' : 'Candidato PRO';
+            const precio = isEmpresa ? 'RD$1,250' : 'RD$250';
+            const botonVolver = isEmpresa ? "renderEmpresaDashboard(currentUser)" : "renderDashboard(currentUser)";
+
+            container.innerHTML = `
+                <div class="max-w-4xl mx-auto py-12 animate-fade-in text-center">
+                    <button onclick="${botonVolver}" class="mb-8 text-slate-400 hover:text-blue-500 flex items-center gap-2 mx-auto transition-colors"><i class="fas fa-arrow-left"></i> Volver a mi panel</button>
+                    <h2 class="text-4xl font-black mb-4 text-white tracking-tight">Lleva tu cuenta al <span class="text-blue-500">Siguiente Nivel</span></h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto text-left mt-10">
+                        <div class="bg-slate-800 p-8 rounded-3xl border border-slate-700 opacity-70 flex flex-col">
+                            <h3 class="font-black text-slate-400 text-xl mb-1">Plan Básico</h3>
+                            <p class="text-4xl font-black text-white mb-8">Gratis</p>
+                            <button class="w-full bg-slate-900 text-slate-500 py-4 rounded-2xl font-bold cursor-not-allowed mt-auto border border-slate-700">Tu plan actual</button>
+                        </div>
+                        <div class="bg-slate-800 p-8 rounded-3xl border-2 border-blue-500 shadow-[0_0_30px_rgba(59,130,246,0.2)] relative flex flex-col">
+                            <div class="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-amber-500 text-slate-900 text-[10px] font-black px-4 py-1.5 rounded-full uppercase tracking-widest shadow-md">Recomendado</div>
+                            <h3 class="font-black text-blue-400 text-xl mb-1">${tituloPro}</h3>
+                            <p class="text-4xl font-black text-white mb-6">${precio}<span class="text-sm text-slate-400 font-normal"> / mes</span></p>
+                            <div class="mt-auto bg-slate-900 p-5 rounded-2xl border border-slate-700">
+                                <p class="text-xs text-slate-300 font-bold mb-3 uppercase tracking-wider">Instrucciones de Activación:</p>
+                                <ol class="text-xs text-slate-400 space-y-3 mb-5 ml-4 list-decimal">
+                                    <li>Realiza el pago correspondiente a la cuenta BHD - <b>30912740013 / 16475950028</b>.</li>
+                                    <li>Envía el comprobante por WhatsApp al <br><b class="text-white"><i class="fab fa-whatsapp text-green-500 mr-1 mt-1"></i> +1 829-913-5723</b></li>
+                                    <li>Haz clic en el botón de abajo para notificar al administrador.</li>
+                                </ol>
+                                <button onclick="solicitarUpgrade()" class="w-full bg-blue-600 text-white py-4 rounded-xl font-black hover:bg-blue-500 transition-colors uppercase tracking-widest text-sm shadow-lg shadow-blue-900/50"><i class="fas fa-check-circle mr-1"></i> Ya envié el comprobante</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+        }
+
+        async function solicitarUpgrade() {
+            const btn = event.target.closest('button');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Procesando...';
+            try {
+                const reqRef = collection(db, 'artifacts', appId, 'public', 'data', 'solicitudes_plan');
+                const qSnap = await getDocs(reqRef);
+                let yaTienePendiente = false;
+                qSnap.forEach(doc => { if (doc.data().usuario_id === currentUser.id && doc.data().estado === 'pendiente') yaTienePendiente = true; });
+
+                const mensajeWa = encodeURIComponent(`Hola, soy ${currentUser.nombre} (${currentUser.email}). Acabo de solicitar el plan PRO en LORHELS CV y adjunto mi comprobante de pago:`);
+                const linkWhatsApp = `https://wa.me/18299135723?text=${mensajeWa}`;
+
+                if (yaTienePendiente) {
+                    showToast("Ya tienes una solicitud en proceso. Abriendo WhatsApp...", "info");
+                    window.open(linkWhatsApp, '_blank');
+                    btn.innerHTML = originalText;
+                    return;
+                }
+
+                await addDoc(reqRef, { usuario_id: currentUser.id, nombre: currentUser.nombre, email: currentUser.email, tipo_usuario: currentUser.tipo, estado: 'pendiente', fecha: new Date().toLocaleDateString(), timestamp: serverTimestamp() });
+                showToast("¡Solicitud registrada! Se abrirá WhatsApp.", "success");
+                window.open(linkWhatsApp, '_blank');
+                if (currentUser.tipo === 'empresa') renderEmpresaDashboard(currentUser); else renderDashboard(currentUser);
+            } catch(e) { showToast("Error: " + e.message, "error"); btn.innerHTML = originalText; }
+        }
+
+        function showQR(id) {
+            const url = window.location.origin + window.location.pathname + "?cv=" + id;
+            const modal = document.createElement('div');
+            modal.className = "fixed inset-0 bg-slate-950/90 flex items-center justify-center z-[100] p-4 backdrop-blur-sm animate-fade-in";
+            modal.innerHTML = `
+                <div class="bg-slate-800 p-10 rounded-3xl text-center shadow-2xl max-w-sm w-full border border-slate-700 relative">
+                    <button onclick="this.parentElement.parentElement.remove()" class="absolute top-4 right-4 text-slate-400 hover:text-red-500 transition-colors"><i class="fas fa-times text-xl"></i></button>
+                    <h3 class="font-black text-2xl mb-8 text-white">Acceso Rápido QR</h3>
+                    <div class="mb-8 flex justify-center p-4 bg-white rounded-2xl border border-slate-200 shadow-inner"><div id="qr-box"></div></div>
+                    <button onclick="this.parentElement.parentElement.remove()" class="w-full bg-slate-700 text-white border border-slate-600 py-4 rounded-2xl font-bold hover:bg-slate-600 transition-colors">Cerrar</button>
+                </div>`;
+            document.body.appendChild(modal);
+            new QRCode(document.getElementById("qr-box"), { text: url, width: 220, height: 220, colorDark: "#000000", colorLight: "#ffffff" });
+        }
+
+        function renderAccessForm(cvId) {
+            document.getElementById('app-container').innerHTML = `
+                <div class="max-w-md mx-auto py-20 animate-fade-in text-center">
+                    <div class="bg-slate-800 p-10 rounded-3xl shadow-2xl border border-slate-700">
+                        <div class="w-20 h-20 bg-slate-900 text-blue-500 rounded-full flex items-center justify-center mx-auto mb-6 border border-slate-700"><i class="fas fa-building text-3xl"></i></div>
+                        <h2 class="text-xl font-bold mb-2 text-white">Acceso a Perfil</h2>
+                        <p class="text-sm text-slate-400 mb-8">Inicia sesión como Empresa para ver este currículum.</p>
+                        <form id="access-form" class="space-y-4 text-left">
+                            <input type="email" id="acc-email" placeholder="Correo de Empresa" required class="w-full p-4 bg-slate-900 border border-slate-700 rounded-2xl text-white outline-none focus:ring-2 focus:ring-blue-500 transition-all">
+                            <input type="password" id="acc-pass" placeholder="Contraseña" required class="w-full p-4 bg-slate-900 border border-slate-700 rounded-2xl text-white outline-none focus:ring-2 focus:ring-blue-500 transition-all">
+                            <button type="submit" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold hover:bg-blue-500 transition-colors shadow-lg shadow-blue-900/50">ENTRAR Y VER CV</button>
+                        </form>
+                    </div>
+                </div>`;
+            
+            document.getElementById('access-form').onsubmit = async (e) => {
+                e.preventDefault();
+                const btn = e.target.querySelector('button');
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verificando...';
+                try {
+                    const cred = await signInWithEmailAndPassword(auth, document.getElementById('acc-email').value, document.getElementById('acc-pass').value);
+                    const userDoc = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'usuarios_sistema', cred.user.uid));
+                    if(userDoc.exists() && (userDoc.data().tipo === 'empresa' || userDoc.data().tipo === 'admin')) {
+                        location.reload();
+                    } else {
+                        showToast("Acceso denegado. No eres una empresa.", "error");
+                        await signOut(auth);
+                        btn.innerHTML = 'ENTRAR Y VER CV';
+                    }
+                } catch(e) { showToast("Datos incorrectos.", "error"); btn.innerHTML = 'ENTRAR Y VER CV'; }
+            };
+        }
+
+        // ==========================================
+        // 2. EXPORTACIÓN A WINDOW PARA EL HTML (onclick)
+        // ==========================================
+        window.showToast = showToast;
+        window.renderWelcome = renderWelcome;
+        window.renderAuthOption = renderAuthOption;
+        window.renderLogin = renderLogin;
+        window.renderRegister = renderRegister;
+        window.renderEmpresaDashboard = renderEmpresaDashboard;
+        window.dibujarGridCVs = dibujarGridCVs;
+        window.filtrarTalento = filtrarTalento;
+        window.mostrarTodos = mostrarTodos;
+        window.mostrarFavoritos = mostrarFavoritos;
+        window.toggleFavorito = toggleFavorito;
+        window.renderDashboard = renderDashboard;
+        window.subirFotoCloudinary = subirFotoCloudinary;
+        window.descargarPDF = descargarPDF;
+        window.loadCV = loadCV;
+        window.renderAdminPanel = renderAdminPanel;
+        window.dibujarListaAdmin = dibujarListaAdmin;
+        window.filtrarAdmin = filtrarAdmin;
+        window.marcarSolicitudLista = marcarSolicitudLista;
+        window.aprobarPlanPRO = aprobarPlanPRO;
+        window.adminProxy = adminProxy;
+        window.enviarSolicitud = enviarSolicitud;
+        window.showVisitas = showVisitas;
+        window.renderPaywall = renderPaywall;
+        window.solicitarUpgrade = solicitarUpgrade;
+        window.showQR = showQR;
+        window.renderAccessForm = renderAccessForm;
+
+        // Iniciar la plataforma
         init();
     </script>
     
-    <!-- Footer -->
-    <footer class="p-6 text-center text-slate-500 text-sm border-t border-slate-800 mt-auto">
- 
-        <p>&copy; 2026
-            <a href="https://lorhels.web.app" target="\_blank" rel="noopener noreferrer" class="text-blue-400 hover:text-blue-300 transition-colors duration-200 font-medium">
-            LorHels Systems
-        </a> Todos los derechos reservados.</p>
-        <p style="margin-top: 10px; color: #4b5563;">Desarrollado con pasión para brindar las mejores soluciones.</p>
-    </footer>
+        <!-- Footer -->
+        <footer class="p-6 text-center text-slate-500 text-sm border-t border-slate-800 mt-auto no-print">
+            <p>&copy; 2026
+                <a href="https://lorhels.web.app" target="_blank" rel="noopener noreferrer" class="text-blue-500 hover:text-blue-400 transition-colors duration-200 font-medium">
+                LorHels Systems
+                </a> Todos los derechos reservados.</p>
+            <p class="mt-2 text-slate-600">Desarrollado con pasión para brindar las mejores soluciones.</p>
+        </footer>
     
-</body>
+    </body>
 </html>
