@@ -1,46 +1,50 @@
-# LorHels-CV
+# LorHels CV
 
-1. El Concepto Central
-Has creado una plataforma digital de reclutamiento y gestión de currículums. Funciona como un puente seguro y moderno entre profesionales (candidatos) y reclutadores (empresas), con un modelo de negocio integrado.
+### 🚀 1. El Concepto Central
 
-2. Tecnología Utilizada
-Frontend: HTML5 puro y Tailwind CSS (para un diseño moderno y responsivo que se ve bien en móviles y computadoras).
+LORHELS CV es una plataforma digital de reclutamiento de nueva generación. Funciona como un ecosistema donde los profesionales crean perfiles digitales seguros y las empresas buscan talento. Todo envuelto en un diseño **Modo Oscuro (Dark Mode)** premium, moderno y responsivo.
 
-Backend & Base de Datos: Firebase Firestore (base de datos en tiempo real súper rápida).
+---
 
-Seguridad: Firebase Authentication (encriptación de contraseñas y manejo seguro de sesiones).
+### 👥 2. Los Tres Perfiles de Usuario
 
-Herramientas extra: QRCode.js (para generar códigos QR en vivo) y html2pdf.js (para exportar los CVs a PDF con alta resolución).
+#### 👨‍💻 1. El Candidato (Usuario)
 
-3. Los Tres Perfiles de Usuario
-👨‍💼 El Candidato (Usuario)
-Creación de Perfil: Puede registrarse, subir su foto (mediante URL) y llenar sus datos básicos y de contacto.
+* **Gestión de Perfil:** Puede crear su cuenta y editar su información básica (contacto, redes, biografía, habilidades, idiomas).
+* **Subida de Foto Inteligente:** Integración directa con **Cloudinary** para subir fotos de perfil de forma fluida y sin recargar la página.
+* **Seguridad Antifraude:** La Experiencia, Educación y Certificados están **bloqueados**. El usuario no puede inventar títulos; debe usar el sistema interno para enviar una solicitud de actualización al Administrador (con enlaces a sus certificados).
+* **Código QR:** Tiene un botón para generar su código QR personal, ideal para tarjetas de presentación.
+* **Generador de PDF:** Con un clic, su perfil web se convierte en un PDF impecable en alta calidad, manteniendo el diseño elegante para imprimir o enviar.
+* **💰 Modelo Freemium (Candidato PRO - $4.99/mes):** Si intenta ver qué empresas han escaneado su QR, choca con un muro de pago (Paywall). Si se hace PRO, desbloquea un panel de métricas con el nombre, correo y fecha de las empresas que vieron su currículum.
 
-Integridad de Datos: Para evitar perfiles falsos, el candidato no puede editar su propia experiencia laboral, educación o certificaciones. Debe enviar una solicitud interna al Administrador para que lo haga.
+#### 🏢 2. La Empresa (Reclutador)
 
-Código QR: Tiene un botón para generar su código QR personal para ponerlo en tarjetas de presentación o compartirlo.
+* **Acceso Protegido:** Cuando escanean el QR de un candidato, la plataforma les obliga a iniciar sesión. Esto protege los datos del candidato y registra la visita.
+* **💰 Modelo Freemium (Reclutador Premium - $19.99/mes):** * **Plan Gratis:** Solo pueden ver los CVs de los QR que escanean físicamente.
+* **Plan Premium:** Se les desbloquea un "Portal Premium" con un **buscador global** para encontrar talentos en toda tu base de datos y un sistema para guardar candidatos en **Favoritos** (con íconos de corazón).
 
-Plan PRO ($4.99/mes): Si paga, desbloquea un panel de métricas donde puede ver qué empresas exactas han escaneado su QR y en qué fecha.
+#### 👑 3. El Administrador (Tú)
 
-🏢 La Empresa (Reclutador)
-Escaneo Seguro: Cuando escanean un QR, la plataforma les exige iniciar sesión. Esto protege los datos del candidato y registra la visita.
+* **Consola de Mando:** Un panel de control dividido en 3 columnas.
+* **Gestión de Usuarios (Proxy):** Puedes ver a todos los registrados, buscar por nombre y entrar a editar sus perfiles simulando ser ellos, saltándote las restricciones para añadirles la experiencia y educación validada.
+* **Bandeja de Edición:** Recibes y marcas como "Listas" las solicitudes de los candidatos que quieren añadir cosas a su CV.
+* **Gestión de Pagos PRO:** Recibes las peticiones de los que quieren pagar.
 
-Plan Básico (Gratis): Solo pueden ver los currículums de los QRs que escanean físicamente.
+---
 
-Plan Premium ($19.99/mes): Se les desbloquea un "Portal Premium" con un buscador global para encontrar talentos por profesión o habilidad en toda tu base de datos, y pueden guardar candidatos en una lista de Favoritos (con íconos de corazón).
+### ⚡ 3. Funcionalidades "Killer" (La Magia del Sistema)
 
-👑 El Administrador (Tú)
-Consola Maestra: Tienes un panel de control dividido en tres columnas con buscador integrado.
+* **Cobros sin comisiones (Vía WhatsApp):** En lugar de usar pasarelas de pago complejas como Stripe o PayPal, el sistema automatiza un mensaje a tu WhatsApp para que el cliente te mande el comprobante de transferencia. Tú lo apruebas con un clic en tu consola.
+* **Caducidad Automática (Lazy Check):** El sistema calcula inteligentemente los 30 días de los planes PRO. Si un usuario se pasa de la fecha, la próxima vez que inicie sesión, el sistema le quita el PRO automáticamente y lo devuelve al plan Gratis.
+* **Notificaciones "Toast":** Alertas flotantes y modernas de éxito o error que desaparecen solas, dándole una experiencia de usuario (UX) de primer nivel.
 
-Control Total: Puedes "Simular y Editar" cualquier perfil, saltándote las restricciones para añadirles la experiencia, habilidades y certificados.
+---
 
-Bandeja de Solicitudes: Recibes y gestionas las peticiones de los candidatos que quieren actualizar su CV.
+### 🛠️ 4. Arquitectura y Tecnología (Stack Serverless)
 
-Aprobación de Pagos: Recibes las solicitudes de los usuarios que quieren ser PRO. Verificas el pago por WhatsApp y con un clic les activas la cuenta por exactamente 30 días.
+* **Frontend:** HTML5, Tailwind CSS (diseño y animaciones) y Vanilla JS.
+* **Backend & Base de Datos:** Firebase Auth (Seguridad encriptada) y Firebase Firestore (Base de datos NoSQL ultrarrápida en tiempo real).
+* **Almacenamiento de Imágenes:** API de Cloudinary.
+* **Librerías Extra:** `QRCode.js` (para los QRs), `html2pdf.js` (para los PDFs) y FontAwesome (para los íconos).
 
-4. Funcionalidades "Killer" (Lo que hace especial a tu app)
-Generación de PDF: Un botón mágico que toma el perfil web y lo convierte en un documento PDF con diseño impecable, listo para descargar o imprimir.
-
-Flujo de Pago por WhatsApp: En lugar de usar pasarelas complejas (y pagar comisiones), el sistema automatiza un mensaje de WhatsApp para que el usuario te envíe el comprobante, manteniendo un toque humano y seguro.
-
-Caducidad Automática (Lazy Check): El sistema calcula inteligentemente los 30 días de los planes PRO. Si un usuario se pasa de la fecha, el sistema lo devuelve al plan Gratis automáticamente la próxima vez que inicie sesión.
+---
